@@ -67,6 +67,8 @@ std::ostream& operator<<(std::ostream& os, Token::Type t)
             os << "Unknown";
             break;
     }
+    
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, Token::Subtype t)
@@ -113,6 +115,8 @@ std::ostream& operator<<(std::ostream& os, Token::Subtype t)
             os << "Unknown";
             break;
     }
+    
+    return os;
 }
 
 int main()

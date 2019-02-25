@@ -44,17 +44,19 @@ namespace xlfparser {
     template <typename char_type>
     constexpr const char_type* _choose_string(const char* c, const wchar_t* w)
     {
-        static_assert(std::is_same<char_type, char>::value || std::is_same<char_type, wchar_t>::value);
-        if (std::is_same<char_type, char>::value) { return reinterpret_cast<const char_type*>(c); }
-        if (std::is_same<char_type, wchar_t>::value) { return reinterpret_cast<const char_type*>(w); }
+        static_assert(std::is_same<char_type, char>::value || std::is_same<char_type, wchar_t>::value,
+                     "Only char* and wchar_t* types are supported.");
+        return std::is_same<char_type, char>::value
+            ? reinterpret_cast<const char_type*>(c)
+            : reinterpret_cast<const char_type*>(w);
     }
 
     template <typename char_type>
     constexpr char_type _choose_char(char c, wchar_t w)
     {
-        static_assert(std::is_same<char_type, char>::value || std::is_same<char_type, wchar_t>::value);
-        if (std::is_same<char_type, char>::value) { return c; }
-        if (std::is_same<char_type, wchar_t>::value) { return w; }
+        static_assert(std::is_same<char_type, char>::value || std::is_same<char_type, wchar_t>::value,
+                     "Only char and wchar_t types are supported.");
+        return std::is_same<char_type, char>::value ? c : w;
     }
 
     inline bool _str_equals(const wchar_t *str1, size_t n1, const wchar_t *str2, size_t n2)
@@ -234,7 +236,7 @@ namespace xlfparser {
                                       size_t size)
     {
         // regular expression for numbers (normal and scientific notation)
-        const std::basic_regex<char_type> number_re(XLFP_STRING(R"(^\d+(:?.\d+)?(:?E[+-]\d+)?$)"),
+        const std::basic_regex<char_type> number_re(XLFP_STRING(R"(^\d+(\.\d+)?(E[+-]\d+)?$)"),
                                                    std::regex_constants::ECMAScript |
                                                    std::regex_constants::icase);
 
@@ -366,9 +368,9 @@ namespace xlfparser {
         const char_type* OPERATORS_INFIX   = XLFP_STRING("+-*/^&=><");
         const char_type* OPERATORS_POSTFIX = XLFP_STRING("%");
 
-        // This matches numbers in scientific notation (e.g '1.5e+10')
-        // and also partial matches of the form 'x.xE+' (e.g. '1.5E+') .
-        const std::basic_regex<char_type> REGEX_SN(XLFP_STRING(R"(^[1-9]{1}(:?.[0-9]+)?E[+-]\d*$)"),
+        // This matches a number in scientific notation with or without numbers after the + or -.
+        // It's used to test for SN numbers before checking for +/- operators.
+        const std::basic_regex<char_type> REGEX_SN(XLFP_STRING(R"(^[1-9](\.\d+)?E[+-]\d*$)"),
                                                    std::regex_constants::ECMAScript |
                                                    std::regex_constants::icase);
 
@@ -485,7 +487,7 @@ namespace xlfparser {
             // scientific notation check
             if (index > start)
             {
-                if (std::regex_search(&formula[start], &formula[index]+1, REGEX_SN))
+                if (std::regex_match(&formula[start], &formula[index]+1, REGEX_SN))
                 {
                     ++index;
                     continue;
