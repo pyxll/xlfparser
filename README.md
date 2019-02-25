@@ -1,3 +1,5 @@
+[![Build status](https://api.travis-ci.org/pyxll/xlfparser.svg?branch=master)](https://travis-ci.org/pyxll/xlfparser)
+
 # xlfparser
 
 Header only C++ library for tokenizing Excel formulas
