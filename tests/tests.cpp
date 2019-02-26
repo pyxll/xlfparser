@@ -166,3 +166,30 @@ TEST_CASE("Errors are parsed correctly", "[xlfparser]")
         CHECK(result[0].subtype() == Token::Subtype::Error);
     }
 }
+
+
+TEST_CASE("String operands are parsed correctly", "[xlfparser]")
+{
+    std::string formula(R"(="string1" >= "string2")");
+    auto result = tokenize(formula);
+
+    REQUIRE(result.size() == 3);
+
+    CHECK_THAT(result[0].value(formula), Equals("\"string1\""));
+    CHECK(result[0].type() == Token::Type::Operand);
+    CHECK(result[0].subtype() == Token::Subtype::Text);
+    CHECK(result[1].type() == Token::Type::OperatorInfix);
+    CHECK(result[1].subtype() == Token::Subtype::Logical);
+    CHECK_THAT(result[2].value(formula), Equals("\"string2\""));
+    CHECK(result[2].type() == Token::Type::Operand);
+    CHECK(result[2].subtype() == Token::Subtype::Text);
+
+    // strings can include quotes
+    formula = R"(="a ""b"" c")";
+    result = tokenize(formula);
+
+    REQUIRE(result.size() == 1);
+    CHECK_THAT(result[0].value(formula), Equals("\"a \"\"b\"\" c\""));
+    CHECK(result[0].type() == Token::Type::Operand);
+    CHECK(result[0].subtype() == Token::Subtype::Text);
+}
