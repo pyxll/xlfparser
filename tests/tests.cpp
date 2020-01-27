@@ -193,3 +193,20 @@ TEST_CASE("String operands are parsed correctly", "[xlfparser]")
     CHECK(result[0].type() == Token::Type::Operand);
     CHECK(result[0].subtype() == Token::Subtype::Text);
 }
+
+
+TEST_CASE("Implicit intersection parsed correctly", "[xlfparser]")
+{
+    std::string formula(R"(=@A1:A10)");
+    auto result = tokenize(formula);
+
+    REQUIRE(result.size() == 2);
+
+    CHECK_THAT(result[0].value(formula), Equals("@"));
+    CHECK(result[0].type() == Token::Type::OperatorPrefix);
+    CHECK(result[0].subtype() == Token::Subtype::Intersection);
+
+    CHECK_THAT(result[1].value(formula), Equals("A1:A10"));
+    CHECK(result[1].type() == Token::Type::Operand);
+    CHECK(result[1].subtype() == Token::Subtype::Range);
+}

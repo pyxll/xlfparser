@@ -251,7 +251,7 @@ namespace xlfparser {
                     formula[token.start()] == XLFP_CHAR('-') ||
                     formula[token.start()] == XLFP_CHAR('+')))
             {
-                // If the previous token  was function, expression, postfix operator or operand, this token
+                // If the previous token was function, expression, postfix operator or operand, this token
                 // is an infix operator of subtype math.
                 if (iter > tokens.begin())
                 {
@@ -295,6 +295,13 @@ namespace xlfparser {
                 continue;
             }
 
+            if (token.type() == Token::Type::OperatorInfix && formula[token.start()] == XLFP_CHAR('@'))
+            {
+                // Implicit intersection operator is always a prefix operator
+                token.type(Token::Type::OperatorPrefix);
+                token.subtype(Token::Subtype::Intersection);
+            }
+
             if (token.type() == Token::Type::OperatorInfix && token.subtype() == Token::Subtype::None)
             {
                 if (formula[token.start()] == XLFP_CHAR('<') ||
@@ -327,13 +334,6 @@ namespace xlfparser {
                     token.subtype(Token::Subtype::Range);
                 }
             }
-
-            // Trim '@' from the start of any function names
-            if (token.type() == Token::Type::Function)
-            {
-                if (token.end() > token.start() && formula[token.start()] == XLFP_CHAR('@'))
-                    token.start(token.start() + 1);
-            }
         }
     }
 
@@ -365,7 +365,7 @@ namespace xlfparser {
         const char_type COMMA         = XLFP_CHAR(',');
         const char_type ERROR_START   = XLFP_CHAR('#');
 
-        const char_type* OPERATORS_INFIX   = XLFP_STRING("+-*/^&=><");
+        const char_type* OPERATORS_INFIX   = XLFP_STRING("+-*/^&=><@");
         const char_type* OPERATORS_POSTFIX = XLFP_STRING("%");
 
         // This matches a number in scientific notation with or without numbers after the + or -.
