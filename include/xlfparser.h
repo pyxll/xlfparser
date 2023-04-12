@@ -30,6 +30,8 @@ THE SOFTWARE.
 #include <tuple>
 #include <regex>
 #include <stdexcept>
+#include <optional>
+#include <format>
 
 
 namespace xlfparser {
@@ -78,6 +80,45 @@ namespace xlfparser {
     {
         return std::strlen(str);
     }
+
+    template <typename... Args>
+    inline std::string _tformat(const char* fmt, Args&&... args) {
+        return std::vformat(fmt, std::make_format_args(args...));
+    }
+
+    template <typename... Args>
+    inline std::wstring _tformat(const wchar_t* fmt, Args&&... args) {
+        return std::vformat(fmt, std::make_wformat_args(args...));
+    }
+
+    /**
+     * Options to the tokenize function.
+     * See also tokenize.
+     */
+    template <typename char_type>
+    struct Options
+    {
+        // Character used instead of the left brace ({) in array literals.
+        std::optional<char_type> left_brace;
+
+        // Character used instead of the right brace (}) in array literals.
+        std::optional<char_type> right_brace;
+
+        // Character used instead of the left bracket ([) in R1C1-style relative references.
+        std::optional<char_type> left_bracket;
+
+        // Character used instead of the right bracket (]) in R1C1-style references.
+        std::optional<char_type> right_bracket;
+
+        // Separator character used between arguments in a function (,).
+        std::optional<char_type> list_separator;
+
+        // Decimal point separator (.).
+        std::optional<char_type> decimal_separator;
+
+        // Character used to separate rows in array literals (;).
+        std::optional<char_type> row_separator;
+    };
 
     /**
      * Token class representing the tokens in an Excel formula.
@@ -232,13 +273,15 @@ namespace xlfparser {
 
     template <typename char_type>
     inline void _infer_token_subtypes(std::vector<Token>& tokens,
+                                      const Options<char_type>& options,
                                       const char_type* formula,
                                       size_t size)
     {
-        // regular expression for numbers (normal and scientific notation)
-        const std::basic_regex<char_type> number_re(XLFP_STRING(R"(^\d+(\.\d+)?(E[+-]\d+)?$)"),
-                                                   std::regex_constants::ECMAScript |
-                                                   std::regex_constants::icase);
+        const std::basic_regex<char_type> number_re(_tformat(
+                XLFP_STRING(R"(^\d+(\{0}\d+)?(E[+-]\d+)?$)"),
+                    options.decimal_separator.value_or(XLFP_CHAR('.'))),
+            std::regex_constants::ECMAScript |
+            std::regex_constants::icase);
 
         for (auto iter = tokens.begin(); iter != tokens.end(); ++iter)
         {
@@ -342,37 +385,42 @@ namespace xlfparser {
      *
      * @param formula The Excel formula to tokenize.
      * @param size Number of characters in the formula string.
+     * @param options Optional tokenize options.
      * @return A vector of tokens.
      */
     template <typename char_type>
-    inline std::vector<Token> tokenize(const char_type *formula, size_t size)
+    inline std::vector<Token> tokenize(const char_type *formula, size_t size, const Options<char_type>& options)
     {
         // Basic checks to make sure it's a valid formula
         if (size < 2 || formula[0] != '=')
             throw std::runtime_error("Invalid Excel formula.");
 
-        //! keywords used in parsing excel formual
+        // Chars used in parsing excel formual
         const char_type QUOTE_DOUBLE  = XLFP_CHAR('"');
         const char_type QUOTE_SINGLE  = XLFP_CHAR('\'');
-        const char_type BRACKET_CLOSE = XLFP_CHAR(']');
-        const char_type BRACKET_OPEN  = XLFP_CHAR('[');
-        const char_type BRACE_OPEN    = XLFP_CHAR('{');
-        const char_type BRACE_CLOSE   = XLFP_CHAR('}');
         const char_type PAREN_OPEN    = XLFP_CHAR('(');
         const char_type PAREN_CLOSE   = XLFP_CHAR(')');
-        const char_type SEMICOLON     = XLFP_CHAR(';');
         const char_type WHITESPACE    = XLFP_CHAR(' ');
-        const char_type COMMA         = XLFP_CHAR(',');
         const char_type ERROR_START   = XLFP_CHAR('#');
+
+        // Some chars can be changed in the options
+        const auto left_brace = options.left_brace.value_or(XLFP_CHAR('{'));
+        const auto right_brace = options.right_brace.value_or(XLFP_CHAR('}'));
+        const auto left_bracket = options.left_bracket.value_or(XLFP_CHAR('['));
+        const auto right_bracket = options.right_brace.value_or(XLFP_CHAR(']'));
+        const auto list_separator = options.list_separator.value_or(XLFP_CHAR(','));
+        const auto decimal_separator = options.decimal_separator.value_or(XLFP_CHAR('.'));
+        const auto row_separator = options.row_separator.value_or(XLFP_CHAR(';'));
 
         const char_type* OPERATORS_INFIX   = XLFP_STRING("+-*/^&=><@");
         const char_type* OPERATORS_POSTFIX = XLFP_STRING("%");
 
         // This matches a number in scientific notation with or without numbers after the + or -.
         // It's used to test for SN numbers before checking for +/- operators.
-        const std::basic_regex<char_type> REGEX_SN(XLFP_STRING(R"(^[1-9](\.\d+)?E[+-]\d*$)"),
-                                                   std::regex_constants::ECMAScript |
-                                                   std::regex_constants::icase);
+        const std::basic_regex<char_type> REGEX_SN(
+            _tformat(XLFP_STRING(R"(^[1-9](\{0}\d+)?E[+-]\d*$)"), decimal_separator),
+            std::regex_constants::ECMAScript |
+            std::regex_constants::icase);
 
         const char_type* ERRORS[] = {
                 XLFP_STRING("#NULL!"),
@@ -457,7 +505,7 @@ namespace xlfparser {
             // end does not mark a token
             if (in_range)
             {
-                if (formula[index] == BRACKET_CLOSE)
+                if (formula[index] == right_bracket)
                     in_range = false;
 
                 index++;
@@ -521,7 +569,7 @@ namespace xlfparser {
                 continue;
             }
 
-            if (formula[index] == BRACKET_OPEN)
+            if (formula[index] == left_bracket)
             {
                 in_range = true;
                 ++index;
@@ -542,7 +590,7 @@ namespace xlfparser {
             }
 
             // mark start and end of arrays and array rows
-            if (formula[index] == BRACE_OPEN)
+            if (formula[index] == left_brace)
             {
                 if (index > start)
                 {
@@ -560,7 +608,7 @@ namespace xlfparser {
                 continue;
             }
 
-            if (formula[index] == SEMICOLON)
+            if (formula[index] == row_separator && !stack.empty() && stack.top() == Token::Type::ArrayRow)
             {
                 if (index > start)
                 {
@@ -574,11 +622,11 @@ namespace xlfparser {
                 tokens.push_back(Token(start, index, Token::Type::ArrayRow, Token::Subtype::Start));
                 stack.push(Token::Type::ArrayRow);
 
-                start = index++;
+                start = ++index;
                 continue;
             }
 
-            if (formula[index] == BRACE_CLOSE)
+            if (formula[index] == right_brace)
             {
                 if (index > start)
                 {
@@ -708,7 +756,7 @@ namespace xlfparser {
             }
 
             // function, subexpression, or array parameters, or operand unions
-            if (formula[index] == COMMA)
+            if (formula[index] == list_separator)
             {
                 if (index > start)
                 {
@@ -754,11 +802,36 @@ namespace xlfparser {
         tokens = _fix_whitespace_tokens(tokens, formula, size);
 
         // set the token subtypes correctly
-        _infer_token_subtypes(tokens, formula, size);
+        _infer_token_subtypes(tokens, options, formula, size);
 
         return tokens;
     }
 
+    /**
+     * Generate a vector of Tokens from an Excel formula.
+     *
+     * @param formula The Excel formula to tokenize.
+     * @param size Number of characters in the formula string.
+     * @return A vector of tokens.
+     */
+    template <typename char_type>
+    inline std::vector<Token> tokenize(const char_type *formula, size_t size)
+    {
+        return tokenize(formula, size, {});
+    }
+
+   /**
+    * Generate a vector of Tokens from an Excel formula.
+    *
+    * @param formula The Excel formula to tokenize.
+    * @param options Options controlling how the Excel formula is tokenized.
+    * @return A vector of tokens.
+    */
+    template<typename string_type>
+    inline std::vector<Token> tokenize(const string_type &formula, const Options<typename string_type::value_type>& options)
+    {
+        return tokenize(formula.c_str(), formula.size(), options);
+    }
 
    /**
     * Generate a vector of Tokens from an Excel formula.
@@ -769,7 +842,7 @@ namespace xlfparser {
     template<typename string_type>
     inline std::vector<Token> tokenize(const string_type &formula)
     {
-        return tokenize(formula.c_str(), formula.size());
+        return tokenize(formula.c_str(), formula.size(), {});
     }
 }
 

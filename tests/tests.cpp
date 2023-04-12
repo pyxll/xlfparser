@@ -146,6 +146,30 @@ TEST_CASE("Scientific notation parses correctly", "[xlfparser]")
 }
 
 
+TEST_CASE("Scientific notation parses correctly with different locale", "[xlfparser]")
+{
+    std::string formula("=2,5E+10-3");
+
+    auto result = tokenize(formula, {
+        .list_separator = ';',
+        .decimal_separator = ','
+    });
+
+    REQUIRE(result.size() == 3);
+
+    CHECK_THAT(result[0].value(formula), Equals("2,5E+10"));
+    CHECK(result[0].type() == Token::Type::Operand);
+    CHECK(result[0].subtype() == Token::Subtype::Number);
+
+    CHECK_THAT(result[1].value(formula), Equals("-"));
+    CHECK(result[1].type() == Token::Type::OperatorInfix);
+
+    CHECK_THAT(result[2].value(formula), Equals("3"));
+    CHECK(result[2].type() == Token::Type::Operand);
+    CHECK(result[2].subtype() == Token::Subtype::Number);
+}
+
+
 TEST_CASE("Errors are parsed correctly", "[xlfparser]")
 {
     std::vector<std::string> formulas{
@@ -209,4 +233,206 @@ TEST_CASE("Implicit intersection parsed correctly", "[xlfparser]")
     CHECK_THAT(result[1].value(formula), Equals("A1:A10"));
     CHECK(result[1].type() == Token::Type::Operand);
     CHECK(result[1].subtype() == Token::Subtype::Range);
+}
+
+
+TEST_CASE("Arrays are parsed correctly", "[xlfparser]")
+{
+    std::string formula("={1;2}");
+    auto result = tokenize(formula);
+
+    REQUIRE(result.size() == 8);
+
+    CHECK(result[0].type() == Token::Type::Array);
+    CHECK(result[0].subtype() == Token::Subtype::Start);
+
+    CHECK(result[1].type() == Token::Type::ArrayRow);
+    CHECK(result[1].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[2].value(formula), Equals("1"));
+    CHECK(result[2].type() == Token::Type::Operand);
+    CHECK(result[2].subtype() == Token::Subtype::Number);
+
+    CHECK(result[3].type() == Token::Type::ArrayRow);
+    CHECK(result[3].subtype() == Token::Subtype::Stop);
+
+    CHECK(result[4].type() == Token::Type::ArrayRow);
+    CHECK(result[4].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[5].value(formula), Equals("2"));
+    CHECK(result[5].type() == Token::Type::Operand);
+    CHECK(result[5].subtype() == Token::Subtype::Number);
+
+    CHECK(result[6].type() == Token::Type::ArrayRow);
+    CHECK(result[6].subtype() == Token::Subtype::Stop);
+
+    CHECK(result[7].type() == Token::Type::Array);
+    CHECK(result[7].subtype() == Token::Subtype::Stop);
+}
+
+TEST_CASE("Arrays with inner functions are parsed correctly", "[xlfparser]")
+{
+    std::string formula("={foo(1,2);bar(1,2)}");
+    auto result = tokenize(formula);
+
+    REQUIRE(result.size() == 16);
+
+    CHECK(result[0].type() == Token::Type::Array);
+    CHECK(result[0].subtype() == Token::Subtype::Start);
+
+    CHECK(result[1].type() == Token::Type::ArrayRow);
+    CHECK(result[1].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[2].value(formula), Equals("foo"));
+    CHECK(result[2].type() == Token::Type::Function);
+    CHECK(result[2].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[3].value(formula), Equals("1"));
+    CHECK(result[3].type() == Token::Type::Operand);
+    CHECK(result[3].subtype() == Token::Subtype::Number);
+
+    CHECK_THAT(result[4].value(formula), Equals(","));
+    CHECK(result[4].type() == Token::Type::Argument);
+
+    CHECK_THAT(result[5].value(formula), Equals("2"));
+    CHECK(result[5].type() == Token::Type::Operand);
+    CHECK(result[5].subtype() == Token::Subtype::Number);
+
+    CHECK(result[6].type() == Token::Type::Function);
+    CHECK(result[6].subtype() == Token::Subtype::Stop);
+
+    CHECK(result[7].type() == Token::Type::ArrayRow);
+    CHECK(result[7].subtype() == Token::Subtype::Stop);
+
+    CHECK(result[8].type() == Token::Type::ArrayRow);
+    CHECK(result[8].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[9].value(formula), Equals("bar"));
+    CHECK(result[9].type() == Token::Type::Function);
+    CHECK(result[9].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[10].value(formula), Equals("1"));
+    CHECK(result[10].type() == Token::Type::Operand);
+    CHECK(result[10].subtype() == Token::Subtype::Number);
+
+    CHECK_THAT(result[11].value(formula), Equals(","));
+    CHECK(result[11].type() == Token::Type::Argument);
+
+    CHECK_THAT(result[12].value(formula), Equals("2"));
+    CHECK(result[12].type() == Token::Type::Operand);
+    CHECK(result[12].subtype() == Token::Subtype::Number);
+
+    CHECK(result[13].type() == Token::Type::Function);
+    CHECK(result[13].subtype() == Token::Subtype::Stop);
+
+    CHECK(result[14].type() == Token::Type::ArrayRow);
+    CHECK(result[14].subtype() == Token::Subtype::Stop);
+
+    CHECK(result[15].type() == Token::Type::Array);
+    CHECK(result[15].subtype() == Token::Subtype::Stop);
+}
+
+
+TEST_CASE("Nested formula using different locale works", "[xlfparser]")
+{
+    std::string formula("=outer(inner(1,00;2000,00))");
+
+    auto result = tokenize(formula, {
+        .list_separator = ';',
+        .decimal_separator = ','
+    });
+
+    REQUIRE(result.size() == 7);
+
+    CHECK_THAT(result[0].value(formula), Equals("outer"));
+    CHECK(result[0].type() == Token::Type::Function);
+    CHECK(result[0].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[1].value(formula), Equals("inner"));
+    CHECK(result[1].type() == Token::Type::Function);
+    CHECK(result[1].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[2].value(formula), Equals("1,00"));
+    CHECK(result[2].type() == Token::Type::Operand);
+    CHECK(result[2].subtype() == Token::Subtype::Number);
+
+    CHECK_THAT(result[3].value(formula), Equals(";"));
+    CHECK(result[3].type() == Token::Type::Argument);
+
+    CHECK_THAT(result[4].value(formula), Equals("2000,00"));
+    CHECK(result[4].type() == Token::Type::Operand);
+    CHECK(result[4].subtype() == Token::Subtype::Number);
+
+    CHECK(result[5].type() == Token::Type::Function);
+    CHECK(result[5].subtype() == Token::Subtype::Stop);
+
+    CHECK(result[6].type() == Token::Type::Function);
+    CHECK(result[6].subtype() == Token::Subtype::Stop);
+}
+
+
+TEST_CASE("Arrays with inner functions using different locale are parsed correctly", "[xlfparser]")
+{
+    std::string formula("={foo(1;2000,00);bar(1,00;2)}");
+
+    auto result = tokenize(formula, {
+        .list_separator = ';',
+        .decimal_separator = ','
+    });
+
+    REQUIRE(result.size() == 16);
+
+    CHECK(result[0].type() == Token::Type::Array);
+    CHECK(result[0].subtype() == Token::Subtype::Start);
+
+    CHECK(result[1].type() == Token::Type::ArrayRow);
+    CHECK(result[1].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[2].value(formula), Equals("foo"));
+    CHECK(result[2].type() == Token::Type::Function);
+    CHECK(result[2].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[3].value(formula), Equals("1"));
+    CHECK(result[3].type() == Token::Type::Operand);
+    CHECK(result[3].subtype() == Token::Subtype::Number);
+
+    CHECK_THAT(result[4].value(formula), Equals(";"));
+    CHECK(result[4].type() == Token::Type::Argument);
+
+    CHECK_THAT(result[5].value(formula), Equals("2000,00"));
+    CHECK(result[5].type() == Token::Type::Operand);
+    CHECK(result[5].subtype() == Token::Subtype::Number);
+
+    CHECK(result[6].type() == Token::Type::Function);
+    CHECK(result[6].subtype() == Token::Subtype::Stop);
+
+    CHECK(result[7].type() == Token::Type::ArrayRow);
+    CHECK(result[7].subtype() == Token::Subtype::Stop);
+
+    CHECK(result[8].type() == Token::Type::ArrayRow);
+    CHECK(result[8].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[9].value(formula), Equals("bar"));
+    CHECK(result[9].type() == Token::Type::Function);
+    CHECK(result[9].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[10].value(formula), Equals("1,00"));
+    CHECK(result[10].type() == Token::Type::Operand);
+    CHECK(result[10].subtype() == Token::Subtype::Number);
+
+    CHECK_THAT(result[11].value(formula), Equals(";"));
+    CHECK(result[11].type() == Token::Type::Argument);
+
+    CHECK_THAT(result[12].value(formula), Equals("2"));
+    CHECK(result[12].type() == Token::Type::Operand);
+    CHECK(result[12].subtype() == Token::Subtype::Number);
+
+    CHECK(result[13].type() == Token::Type::Function);
+    CHECK(result[13].subtype() == Token::Subtype::Stop);
+
+    CHECK(result[14].type() == Token::Type::ArrayRow);
+    CHECK(result[14].subtype() == Token::Subtype::Stop);
+
+    CHECK(result[15].type() == Token::Type::Array);
+    CHECK(result[15].subtype() == Token::Subtype::Stop);
 }
