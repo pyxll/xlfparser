@@ -31,7 +31,7 @@ THE SOFTWARE.
 #include <regex>
 #include <stdexcept>
 #include <optional>
-#include <format>
+#include <sstream>
 
 
 namespace xlfparser {
@@ -79,16 +79,6 @@ namespace xlfparser {
     inline size_t _tcslen(const char *str)
     {
         return std::strlen(str);
-    }
-
-    template <typename... Args>
-    inline std::string _tformat(const char* fmt, Args&&... args) {
-        return std::vformat(fmt, std::make_format_args(args...));
-    }
-
-    template <typename... Args>
-    inline std::wstring _tformat(const wchar_t* fmt, Args&&... args) {
-        return std::vformat(fmt, std::make_wformat_args(args...));
     }
 
     /**
@@ -277,9 +267,9 @@ namespace xlfparser {
                                       const char_type* formula,
                                       size_t size)
     {
-        const std::basic_regex<char_type> number_re(_tformat(
-                XLFP_STRING(R"(^\d+(\{0}\d+)?(E[+-]\d+)?$)"),
-                    options.decimal_separator.value_or(XLFP_CHAR('.'))),
+        std::basic_stringstream<char_type> number_re_ss;
+        number_re_ss << R"(^\d+(\)" << options.decimal_separator.value_or(XLFP_CHAR('.')) << R"(\d+)?(E[+-]\d+)?$)";
+        const std::basic_regex<char_type> number_re(number_re_ss.str(),
             std::regex_constants::ECMAScript |
             std::regex_constants::icase);
 
@@ -417,8 +407,9 @@ namespace xlfparser {
 
         // This matches a number in scientific notation with or without numbers after the + or -.
         // It's used to test for SN numbers before checking for +/- operators.
-        const std::basic_regex<char_type> REGEX_SN(
-            _tformat(XLFP_STRING(R"(^[1-9](\{0}\d+)?E[+-]\d*$)"), decimal_separator),
+        std::basic_stringstream<char_type> sn_regex_ss;
+        sn_regex_ss << R"(^[1-9](\)" << decimal_separator << R"(\d+)?E[+-]\d*$)";
+        const std::basic_regex<char_type> sn_regex(sn_regex_ss.str(),
             std::regex_constants::ECMAScript |
             std::regex_constants::icase);
 
@@ -535,7 +526,7 @@ namespace xlfparser {
             // scientific notation check
             if (index > start)
             {
-                if (std::regex_match(&formula[start], &formula[index]+1, REGEX_SN))
+                if (std::regex_match(&formula[start], &formula[index]+1, sn_regex))
                 {
                     ++index;
                     continue;
