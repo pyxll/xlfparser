@@ -1,4 +1,4 @@
-[![Build status](https://api.travis-ci.org/pyxll/xlfparser.svg?branch=master)](https://travis-ci.org/pyxll/xlfparser)
+[![CMake](https://github.com/pyxll/xlfparser/actions/workflows/cmake.yml/badge.svg)](https://github.com/pyxll/xlfparser/actions/workflows/cmake.yml)
 
 # xlfparser
 
