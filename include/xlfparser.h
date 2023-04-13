@@ -835,6 +835,31 @@ namespace xlfparser {
     {
         return tokenize(formula.c_str(), formula.size(), {});
     }
+
+   /**
+    * Generate a vector of Tokens from an Excel formula.
+    *
+    * @param formula The Excel formula to tokenize.
+    * @param options Options controlling how the Excel formula is tokenized.
+    * @return A vector of tokens.
+    */
+    template<typename char_type>
+    inline std::vector<Token> tokenize(std::basic_string_view<char_type> formula, const Options<char_type>& options)
+    {
+        return tokenize(formula.data(), formula.size(), options);
+    }
+
+   /**
+    * Generate a vector of Tokens from an Excel formula.
+    *
+    * @param formula The Excel formula to tokenize.
+    * @return A vector of tokens.
+    */
+    template<typename char_type>
+    inline std::vector<Token> tokenize(std::basic_string_view<char_type> formula)
+    {
+        return tokenize(formula.data(), formula.size(), {});
+    }
 }
 
 
