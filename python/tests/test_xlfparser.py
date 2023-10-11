@@ -1,4 +1,4 @@
-from xlfparser import tokenize, Type, SubType
+from xlfparser import tokenize, Type, SubType, build_ast
 
 
 def test_tokenize_formula():
@@ -31,3 +31,36 @@ def test_tokenize_function():
     assert tokens[4].value == ")"
     assert tokens[4].type == Type.Function
     assert tokens[4].sub_type == SubType.Stop
+
+
+def test_ast_builder_formula():
+    ast = build_ast("=3*4+5")
+    assert str(ast) == "3 * 4 + 5"
+
+
+def test_ast_builder_prefix():
+    ast = build_ast("=-1")
+    assert str(ast) == "- 1"
+
+
+def test_ast_builder_postfix():
+    ast = build_ast("=1%")
+    assert str(ast) == "1 %"
+
+def test_ast_builder_function():
+    ast = build_ast("=SUM(1, 2)")
+    assert str(ast) == "SUM( 1 , 2 )"
+
+
+def test_ast_builder_subexpression():
+    ast = build_ast("=1+(2*-3)")
+    assert str(ast) == "1 + ( 2 * - 3 )"
+
+
+def test_ast_builder_array():
+    ast = build_ast("={1,2,3;4,5,6}")
+    assert str(ast) == "{ 1 , 2 , 3 ; 4 , 5 , 6 ; }"
+
+def test_ast_builder_complex():
+    ast = build_ast("={FUNC(-1, 2*3, 4%, (5 / 6))}")
+    assert str(ast) == "{ FUNC( - 1 , 2 * 3 , 4 % , ( 5 / 6 ) ) ; }"
