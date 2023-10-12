@@ -65,6 +65,9 @@ setup(
     author="Tony Roberts",
     author_email="tony@pyxll.com",
     description="Excel formula parser.",
+    long_description=open("README.md", "rt").read(),
+    long_description_content_type="text/markdown",
+    license=open("LICENSE", "rt").read(),
     url="https://github.com/pyxll/xlfparser",
     include_package_data=True,
     ext_modules=cythonize(

@@ -1,0 +1,101 @@
+# This workflow will upload a Python Package using Twine when a release is created
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Upload Python Package
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.x"
+
+    - name: Install dependencies
+      working-directory: ${{github.workspace}}/python
+      run: |
+        python -m pip install --upgrade pip
+        pip install build cython
+
+    - name: Build source dist
+      working-directory: ${{github.workspace}}/python
+      run: python -m build --sdist
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package-distributions
+        path: python/dist/
+
+  bdist:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        os: [windows-latest]
+        architecture: [x64, x86]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+        architecture: ${{ matrix.architecture }}
+
+    - name: Install dependencies
+      working-directory: ${{github.workspace}}/python
+      run: |
+        python -m pip install --upgrade pip
+        pip install build cython
+
+    - name: Build wheel
+      working-directory: ${{github.workspace}}/python
+      run: python -m build --wheel
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package-distributions
+        path: python/dist/
+
+  deploy:
+    name: Publish to PyPI 
+    needs:
+    - sdist
+    - bdist
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        skip-existing: true
