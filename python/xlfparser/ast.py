@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
-from .visitor import Visitor, visit
-from .types import Token, Type, SubType
+from .token import Token, TokenVisitor
+from .options import OptionsKwargs, Options
 from ._xlfparser import tokenize
 
 
@@ -14,13 +14,14 @@ class Node:
         self.token = token
         self.children = list(children)
 
-    def visit(self, visitor: "NodeVisitor"):
+    def to_string(self, separator=" ", **kwargs: OptionsKwargs):
+        options = Options.from_kwargs(**kwargs)
+        visitor = NodeToStringVisitor(separator, options)
         visitor.visit(self)
+        return visitor.value
 
     def __str__(self):
-        visitor = NodeToStringVisitor()
-        self.visit(visitor)
-        return " ".join(visitor.values)
+        return self.to_string()
 
 
 class NodeVisitor(metaclass=ABCMeta):
@@ -28,23 +29,23 @@ class NodeVisitor(metaclass=ABCMeta):
     def visit(self, node: Node):
         if node.token is None:
             self.visit_children(node)
-        elif node.token.type == Type.Operand:
+        elif node.token.type == Token.Type.Operand:
             self.visit_operand(node)
-        elif node.token.type == Type.Function:
+        elif node.token.type == Token.Type.Function:
             self.visit_function(node)
-        elif node.token.type == Type.Array:
+        elif node.token.type == Token.Type.Array:
             self.visit_array(node)
-        elif node.token.type == Type.ArrayRow:
+        elif node.token.type == Token.Type.ArrayRow:
             self.visit_arrayrow(node)
-        elif node.token.type == Type.Subexpression:
+        elif node.token.type == Token.Type.Subexpression:
             self.visit_subexpression(node)
-        elif node.token.type == Type.Argument:
+        elif node.token.type == Token.Type.Argument:
             self.visit_argument(node)
-        elif node.token.type == Type.OperatorPrefix:
+        elif node.token.type == Token.Type.OperatorPrefix:
             self.visit_operatorprefix(node)
-        elif node.token.type == Type.OperatorInfix:
+        elif node.token.type == Token.Type.OperatorInfix:
             self.visit_operatorinfix(node)
-        elif node.token.type == Type.OperatorPostfix:
+        elif node.token.type == Token.Type.OperatorPostfix:
             self.visit_operatorpostfix(node)
         else:
             raise ValueError(f"Unexpected token {node.token=}")
@@ -91,25 +92,33 @@ class NodeVisitor(metaclass=ABCMeta):
 class NodeToStringVisitor(NodeVisitor):
     """Node visitor that produces a sequence of values for converting an AST back into a string."""
 
-    def __init__(self):
+    def __init__(self, separator: str, options: Options):
         self.values = []
+        self.separator = separator
+        self.options = options
+
+    @property
+    def value(self):
+        return self.separator.join(self.values)
 
     def visit_operand(self, node: Node):
         self.values.append(node.token.value)
 
     def visit_function(self, node: Node):
         self.values.append(node.token.value + "(")
-        self.visit_children(node, ",")
+        self.visit_children(node, self.options.list_separator)
         self.values.append(")")
 
     def visit_array(self, node: Node):
-        self.values.append("{")
+        self.values.append(self.options.left_brace)
         self.visit_children(node)
-        self.values.append("}")
+        if self.values[-1] == self.options.row_separator:
+            self.values.pop()
+        self.values.append(self.options.right_brace)
 
     def visit_arrayrow(self, node: Node):
-        self.visit_children(node, ",")
-        self.values.append(";")
+        self.visit_children(node, self.options.list_separator)
+        self.values.append(self.options.row_separator)
 
     def visit_subexpression(self, node: Node):
         self.values.append("(")
@@ -128,7 +137,7 @@ class NodeToStringVisitor(NodeVisitor):
         self.values.append(node.token.value)
 
 
-class ASTBuilder(Visitor):
+class ASTBuilder(TokenVisitor):
     """Token vistor that builds the AST from a sequence of tokens."""
 
     def __init__(self):
@@ -148,45 +157,45 @@ class ASTBuilder(Visitor):
         raise ValueError(f"Unexpected token {token=}")
 
     def visit_operand(self, token: Token):
-        if self.__prev_token_type == Type.OperatorInfix:
+        if self.__prev_token_type == Token.Type.OperatorInfix:
             operand = self.__stack.pop()
             operand.children.append(Node(token))
-        elif self.__prev_token_type == Type.OperatorPrefix:
+        elif self.__prev_token_type == Token.Type.OperatorPrefix:
             operator = self.__stack.pop()
             operator.children.append(Node(token))
         else:
             self.__stack[-1].children.append(Node(token))
 
     def visit_function(self, token: Token):
-        if token.sub_type == SubType.Start:
+        if token.sub_type == Token.SubType.Start:
             node = Node(token)
             self.__stack[-1].children.append(node)
             self.__stack.append(node)
-        elif token.sub_type == SubType.Stop:
+        elif token.sub_type == Token.SubType.Stop:
             self.__stack.pop()
 
     def visit_array(self, token: Token):
-        if token.sub_type == SubType.Start:
+        if token.sub_type == Token.SubType.Start:
             node = Node(token)
             self.__stack[-1].children.append(node)
             self.__stack.append(node)
-        elif token.sub_type == SubType.Stop:
+        elif token.sub_type == Token.SubType.Stop:
             self.__stack.pop()
 
     def visit_arrayrow(self, token: Token):
-        if token.sub_type == SubType.Start:
+        if token.sub_type == Token.SubType.Start:
             node = Node(token)
             self.__stack[-1].children.append(node)
             self.__stack.append(node)
-        elif token.sub_type == SubType.Stop:
+        elif token.sub_type == Token.SubType.Stop:
             self.__stack.pop()
 
     def visit_subexpression(self, token: Token):
-        if token.sub_type == SubType.Start:
+        if token.sub_type == Token.SubType.Start:
             node = Node(token)
             self.__stack[-1].children.append(node)
             self.__stack.append(node)
-        elif token.sub_type == SubType.Stop:
+        elif token.sub_type == Token.SubType.Stop:
             self.__stack.pop()
 
     def visit_operatorprefix(self, token: Token):
@@ -214,9 +223,9 @@ class ASTBuilder(Visitor):
         pass
 
 
-def build_ast(formula: str) -> Node:
+def build_ast(tokens: list[Token]) -> Node:
     """Build an AST from an Excel formula string."""
-    tokens = tokenize(formula)
     visitor = ASTBuilder()
-    visit(tokens, visitor)
+    for token in tokens:
+        visitor.visit(token)
     return visitor.root

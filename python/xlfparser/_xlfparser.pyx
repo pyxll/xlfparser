@@ -1,8 +1,10 @@
 # distutils: language = c++
 
 from ._xlfparser cimport _Token, _Type, _Subtype, _Options, _tokenize
-from .types import Token, Type, SubType
+from .token import Token
+from .options import OptionsKwargs, Options
 
+from cython.operator import dereference
 from libc.stddef cimport wchar_t
 from libcpp.optional cimport optional
 from libcpp.vector cimport vector
@@ -26,60 +28,81 @@ cdef object _from_wstring(wstring s):
 
 cdef object _from_type(_Type t):
     if <int>t == <int>Unknown:
-        return Type.Unknown
+        return Token.Type.Unknown
     elif <int>t == <int>Operand:
-        return Type.Operand
+        return Token.Type.Operand
     elif <int>t == <int>Function:
-        return Type.Function
+        return Token.Type.Function
     elif <int>t == <int>Array:
-        return Type.Array
+        return Token.Type.Array
     elif <int>t == <int>ArrayRow:
-        return Type.ArrayRow
+        return Token.Type.ArrayRow
     elif <int>t == <int>Subexpression:
-        return Type.Subexpression
+        return Token.Type.Subexpression
     elif <int>t == <int>Argument:
-        return Type.Argument
+        return Token.Type.Argument
     elif <int>t == <int>OperatorPrefix:
-        return Type.OperatorPrefix
+        return Token.Type.OperatorPrefix
     elif <int>t == <int>OperatorInfix:
-        return Type.OperatorInfix
+        return Token.Type.OperatorInfix
     elif <int>t == <int>OperatorPostfix:
-        return Type.OperatorPostfix
+        return Token.Type.OperatorPostfix
     elif <int>t == <int>Whitespace:
-        return Type.Whitespace
+        return Token.Type.Whitespace
     raise ValueError("Unexpected token type")
 
 
 cdef object _from_subtype(_Subtype st):
     if <int>st == <int>_None:
-        return SubType._None
+        return Token.SubType._None
     elif <int>st == <int>Start:
-        return SubType.Start
+        return Token.SubType.Start
     elif <int>st == <int>Stop:
-        return SubType.Stop
+        return Token.SubType.Stop
     elif <int>st == <int>Text:
-        return SubType.Text
+        return Token.SubType.Text
     if <int>st == <int>Number:
-        return SubType.Number
+        return Token.SubType.Number
     elif <int>st == <int>Logical:
-        return SubType.Logical
+        return Token.SubType.Logical
     elif <int>st == <int>Error:
-        return SubType.Error
+        return Token.SubType.Error
     elif <int>st == <int>Range:
-        return SubType.Range
+        return Token.SubType.Range
     if <int>st == <int>Math:
-        return SubType.Math
+        return Token.SubType.Math
     elif <int>st == <int>Concatenation:
-        return SubType.Concatenation
+        return Token.SubType.Concatenation
     elif <int>st == <int>Intersection:
-        return SubType.Intersection
+        return Token.SubType.Intersection
     elif <int>st == <int>Union:
-        return SubType.Union
+        return Token.SubType.Union
     raise ValueError("Unexpected token subtype")
 
 
-def tokenize(str formula):
-    cdef _Options[wchar_t] options
+cdef wchar_t _get_option(options, key):
+    value = getattr(options, key)
+    if not isinstance(value, str) or len(value) != 1:
+        raise ValueError("Unexpected value '%s' for '%s'" % (value, key))
+    cdef wstring wvalue = _to_wstring(value)
+    return dereference(wvalue.c_str())
+
+
+cdef _Options[wchar_t] _to_options(object kwargs):
+    cdef _Options[wchar_t] coptions
+    options = Options.from_kwargs(**kwargs)
+    coptions.left_brace = _get_option(options, "left_brace")
+    coptions.right_brace = _get_option(options, "right_brace")
+    coptions.left_bracket = _get_option(options, "left_bracket")
+    coptions.right_bracket = _get_option(options, "right_bracket")
+    coptions.list_separator = _get_option(options, "list_separator")
+    coptions.decimal_separator = _get_option(options, "decimal_separator")
+    coptions.row_separator = _get_option(options, "row_separator")
+    return coptions
+
+
+def tokenize(str formula, **kwargs: OptionsKwargs):
+    cdef _Options[wchar_t] options = _to_options(kwargs)
     cdef wstring wformula = _to_wstring(formula)
     cdef vector[_Token] tokens = _tokenize(wformula, options)
 

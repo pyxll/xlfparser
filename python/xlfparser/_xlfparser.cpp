@@ -1697,14 +1697,80 @@ static CYTHON_INLINE PyObject* __Pyx_PyObject_Call(PyObject *func, PyObject *arg
 /* RaiseException.proto */
 static void __Pyx_Raise(PyObject *type, PyObject *value, PyObject *tb, PyObject *cause);
 
+/* GetAttr.proto */
+static CYTHON_INLINE PyObject *__Pyx_GetAttr(PyObject *, PyObject *);
+
+/* PyObjectFormatAndDecref.proto */
+static CYTHON_INLINE PyObject* __Pyx_PyObject_FormatSimpleAndDecref(PyObject* s, PyObject* f);
+static CYTHON_INLINE PyObject* __Pyx_PyObject_FormatAndDecref(PyObject* s, PyObject* f);
+
+/* IncludeStringH.proto */
+#include <string.h>
+
+/* JoinPyUnicode.proto */
+static PyObject* __Pyx_PyUnicode_Join(PyObject* value_tuple, Py_ssize_t value_count, Py_ssize_t result_ulength,
+                                      Py_UCS4 max_char);
+
+/* PyFunctionFastCall.proto */
+#if CYTHON_FAST_PYCALL
+#if !CYTHON_VECTORCALL
+#define __Pyx_PyFunction_FastCall(func, args, nargs)\
+    __Pyx_PyFunction_FastCallDict((func), (args), (nargs), NULL)
+static PyObject *__Pyx_PyFunction_FastCallDict(PyObject *func, PyObject **args, Py_ssize_t nargs, PyObject *kwargs);
+#endif
+#define __Pyx_BUILD_ASSERT_EXPR(cond)\
+    (sizeof(char [1 - 2*!(cond)]) - 1)
+#ifndef Py_MEMBER_SIZE
+#define Py_MEMBER_SIZE(type, member) sizeof(((type *)0)->member)
+#endif
+#if !CYTHON_VECTORCALL
+#if PY_VERSION_HEX >= 0x03080000
+  #include "frameobject.h"
+#if PY_VERSION_HEX >= 0x030b00a6 && !CYTHON_COMPILING_IN_LIMITED_API
+  #ifndef Py_BUILD_CORE
+    #define Py_BUILD_CORE 1
+  #endif
+  #include "internal/pycore_frame.h"
+#endif
+  #define __Pxy_PyFrame_Initialize_Offsets()
+  #define __Pyx_PyFrame_GetLocalsplus(frame)  ((frame)->f_localsplus)
+#else
+  static size_t __pyx_pyframe_localsplus_offset = 0;
+  #include "frameobject.h"
+  #define __Pxy_PyFrame_Initialize_Offsets()\
+    ((void)__Pyx_BUILD_ASSERT_EXPR(sizeof(PyFrameObject) == offsetof(PyFrameObject, f_localsplus) + Py_MEMBER_SIZE(PyFrameObject, f_localsplus)),\
+     (void)(__pyx_pyframe_localsplus_offset = ((size_t)PyFrame_Type.tp_basicsize) - Py_MEMBER_SIZE(PyFrameObject, f_localsplus)))
+  #define __Pyx_PyFrame_GetLocalsplus(frame)\
+    (assert(__pyx_pyframe_localsplus_offset), (PyObject **)(((char *)(frame)) + __pyx_pyframe_localsplus_offset))
+#endif
+#endif
+#endif
+
+/* PyObjectCallMethO.proto */
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallMethO(PyObject *func, PyObject *arg);
+#endif
+
+/* PyObjectFastCall.proto */
+#define __Pyx_PyObject_FastCall(func, args, nargs)  __Pyx_PyObject_FastCallDict(func, args, (size_t)(nargs), NULL)
+static CYTHON_INLINE PyObject* __Pyx_PyObject_FastCallDict(PyObject *func, PyObject **args, size_t nargs, PyObject *kwargs);
+
+/* PyObjectCallOneArg.proto */
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObject *arg);
+
+/* MoveIfSupported.proto */
+#if CYTHON_USE_CPP_STD_MOVE
+  #include <utility>
+  #define __PYX_STD_MOVE_IF_SUPPORTED(x) std::move(x)
+#else
+  #define __PYX_STD_MOVE_IF_SUPPORTED(x) x
+#endif
+
 /* TupleAndListFromArray.proto */
 #if CYTHON_COMPILING_IN_CPYTHON
 static CYTHON_INLINE PyObject* __Pyx_PyList_FromArray(PyObject *const *src, Py_ssize_t n);
 static CYTHON_INLINE PyObject* __Pyx_PyTuple_FromArray(PyObject *const *src, Py_ssize_t n);
 #endif
-
-/* IncludeStringH.proto */
-#include <string.h>
 
 /* BytesEquals.proto */
 static CYTHON_INLINE int __Pyx_PyBytes_Equals(PyObject* s1, PyObject* s2, int equals);
@@ -1756,19 +1822,24 @@ static CYTHON_INLINE int __Pyx_PyUnicode_Equals(PyObject* s1, PyObject* s2, int 
 #define __Pyx_ArgsSlice_FASTCALL(args, start, stop) PyTuple_GetSlice(args, start, stop)
 #endif
 
+/* RaiseDoubleKeywords.proto */
+static void __Pyx_RaiseDoubleKeywordsError(const char* func_name, PyObject* kw_name);
+
+/* ParseKeywords.proto */
+static int __Pyx_ParseOptionalKeywords(PyObject *kwds, PyObject *const *kwvalues,
+    PyObject **argnames[],
+    PyObject *kwds2, PyObject *values[], Py_ssize_t num_pos_args,
+    const char* function_name);
+
+/* RaiseArgTupleInvalid.proto */
+static void __Pyx_RaiseArgtupleInvalid(const char* func_name, int exact,
+    Py_ssize_t num_min, Py_ssize_t num_max, Py_ssize_t num_found);
+
 /* ArgTypeTest.proto */
 #define __Pyx_ArgTypeTest(obj, type, none_allowed, name, exact)\
     ((likely(__Pyx_IS_TYPE(obj, type) | (none_allowed && (obj == Py_None)))) ? 1 :\
         __Pyx__ArgTypeTest(obj, type, name, exact))
 static int __Pyx__ArgTypeTest(PyObject *obj, PyTypeObject *type, const char *name, int exact);
-
-/* MoveIfSupported.proto */
-#if CYTHON_USE_CPP_STD_MOVE
-  #include <utility>
-  #define __PYX_STD_MOVE_IF_SUPPORTED(x) std::move(x)
-#else
-  #define __PYX_STD_MOVE_IF_SUPPORTED(x) x
-#endif
 
 /* ListAppend.proto */
 #if CYTHON_USE_PYLIST_INTERNALS && CYTHON_ASSUME_SAFE_MACROS
@@ -2080,6 +2151,8 @@ static std::wstring __pyx_f_9xlfparser_10_xlfparser__to_wstring(PyObject *); /*p
 static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_wstring(std::wstring); /*proto*/
 static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_type(xlfparser::Token::Type); /*proto*/
 static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_subtype(xlfparser::Token::Subtype); /*proto*/
+static wchar_t __pyx_f_9xlfparser_10_xlfparser__get_option(PyObject *, PyObject *); /*proto*/
+static xlfparser::Options<wchar_t>  __pyx_f_9xlfparser_10_xlfparser__to_options(PyObject *); /*proto*/
 /* #### Code section: typeinfo ### */
 /* #### Code section: before_global_var ### */
 #define __Pyx_MODULE_NAME "xlfparser._xlfparser"
@@ -2092,8 +2165,10 @@ static PyObject *__pyx_builtin_ValueError;
 static PyObject *__pyx_builtin_range;
 /* #### Code section: string_decls ### */
 static const char __pyx_k_i[] = "i";
-static const char __pyx_k__3[] = ".";
-static const char __pyx_k__6[] = "?";
+static const char __pyx_k__3[] = "'";
+static const char __pyx_k__4[] = ".";
+static const char __pyx_k__7[] = "?";
+static const char __pyx_k_for[] = "' for '";
 static const char __pyx_k_Math[] = "Math";
 static const char __pyx_k_None[] = "_None";
 static const char __pyx_k_Stop[] = "Stop";
@@ -2110,14 +2185,16 @@ static const char __pyx_k_Start[] = "Start";
 static const char __pyx_k_Token[] = "Token";
 static const char __pyx_k_Union[] = "Union";
 static const char __pyx_k_range[] = "range";
-static const char __pyx_k_types[] = "types";
+static const char __pyx_k_token[] = "token";
 static const char __pyx_k_value[] = "value";
 static const char __pyx_k_Number[] = "Number";
 static const char __pyx_k_import[] = "__import__";
+static const char __pyx_k_kwargs[] = "kwargs";
 static const char __pyx_k_result[] = "result";
 static const char __pyx_k_tokens[] = "tokens";
 static const char __pyx_k_Logical[] = "Logical";
 static const char __pyx_k_Operand[] = "Operand";
+static const char __pyx_k_Options[] = "Options";
 static const char __pyx_k_SubType[] = "SubType";
 static const char __pyx_k_Unknown[] = "Unknown";
 static const char __pyx_k_formula[] = "formula";
@@ -2130,13 +2207,23 @@ static const char __pyx_k_tokenize[] = "tokenize";
 static const char __pyx_k_wformula[] = "wformula";
 static const char __pyx_k_ValueError[] = "ValueError";
 static const char __pyx_k_Whitespace[] = "Whitespace";
+static const char __pyx_k_left_brace[] = "left_brace";
+static const char __pyx_k_from_kwargs[] = "from_kwargs";
+static const char __pyx_k_right_brace[] = "right_brace";
 static const char __pyx_k_Intersection[] = "Intersection";
 static const char __pyx_k_is_coroutine[] = "_is_coroutine";
+static const char __pyx_k_left_bracket[] = "left_bracket";
 static const char __pyx_k_Concatenation[] = "Concatenation";
 static const char __pyx_k_OperatorInfix[] = "OperatorInfix";
+static const char __pyx_k_OptionsKwargs[] = "OptionsKwargs";
 static const char __pyx_k_Subexpression[] = "Subexpression";
+static const char __pyx_k_right_bracket[] = "right_bracket";
+static const char __pyx_k_row_separator[] = "row_separator";
 static const char __pyx_k_OperatorPrefix[] = "OperatorPrefix";
+static const char __pyx_k_list_separator[] = "list_separator";
 static const char __pyx_k_OperatorPostfix[] = "OperatorPostfix";
+static const char __pyx_k_Unexpected_value[] = "Unexpected value '";
+static const char __pyx_k_decimal_separator[] = "decimal_separator";
 static const char __pyx_k_asyncio_coroutines[] = "asyncio.coroutines";
 static const char __pyx_k_cline_in_traceback[] = "cline_in_traceback";
 static const char __pyx_k_xlfparser__xlfparser[] = "xlfparser._xlfparser";
@@ -2144,7 +2231,7 @@ static const char __pyx_k_Unexpected_token_type[] = "Unexpected token type";
 static const char __pyx_k_Unexpected_token_subtype[] = "Unexpected token subtype";
 static const char __pyx_k_xlfparser__xlfparser_pyx[] = "xlfparser\\_xlfparser.pyx";
 /* #### Code section: decls ### */
-static PyObject *__pyx_pf_9xlfparser_10_xlfparser_tokenize(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_formula); /* proto */
+static PyObject *__pyx_pf_9xlfparser_10_xlfparser_tokenize(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_formula, PyObject *__pyx_v_kwargs); /* proto */
 /* #### Code section: late_includes ### */
 /* #### Code section: module_state ### */
 typedef struct {
@@ -2197,6 +2284,8 @@ typedef struct {
   PyObject *__pyx_n_s_OperatorInfix;
   PyObject *__pyx_n_s_OperatorPostfix;
   PyObject *__pyx_n_s_OperatorPrefix;
+  PyObject *__pyx_n_s_Options;
+  PyObject *__pyx_n_s_OptionsKwargs;
   PyObject *__pyx_n_s_Range;
   PyObject *__pyx_n_s_Start;
   PyObject *__pyx_n_s_Stop;
@@ -2207,37 +2296,49 @@ typedef struct {
   PyObject *__pyx_n_s_Type;
   PyObject *__pyx_kp_u_Unexpected_token_subtype;
   PyObject *__pyx_kp_u_Unexpected_token_type;
+  PyObject *__pyx_kp_u_Unexpected_value;
   PyObject *__pyx_n_s_Union;
   PyObject *__pyx_n_s_Unknown;
   PyObject *__pyx_n_s_ValueError;
   PyObject *__pyx_n_s_Whitespace;
   PyObject *__pyx_kp_u__3;
-  PyObject *__pyx_n_s__6;
+  PyObject *__pyx_kp_u__4;
+  PyObject *__pyx_n_s__7;
   PyObject *__pyx_n_s_asyncio_coroutines;
   PyObject *__pyx_n_s_cline_in_traceback;
+  PyObject *__pyx_n_u_decimal_separator;
+  PyObject *__pyx_kp_u_for;
   PyObject *__pyx_n_s_formula;
+  PyObject *__pyx_n_s_from_kwargs;
   PyObject *__pyx_n_s_i;
   PyObject *__pyx_n_s_import;
   PyObject *__pyx_n_s_is_coroutine;
+  PyObject *__pyx_n_s_kwargs;
+  PyObject *__pyx_n_u_left_brace;
+  PyObject *__pyx_n_u_left_bracket;
+  PyObject *__pyx_n_u_list_separator;
   PyObject *__pyx_n_s_main;
   PyObject *__pyx_n_s_name;
   PyObject *__pyx_n_s_options;
   PyObject *__pyx_n_s_range;
   PyObject *__pyx_n_s_result;
+  PyObject *__pyx_n_u_right_brace;
+  PyObject *__pyx_n_u_right_bracket;
+  PyObject *__pyx_n_u_row_separator;
   PyObject *__pyx_n_s_sub_type;
   PyObject *__pyx_n_s_test;
+  PyObject *__pyx_n_s_token;
   PyObject *__pyx_n_s_tokenize;
   PyObject *__pyx_n_s_tokens;
   PyObject *__pyx_n_s_type;
-  PyObject *__pyx_n_s_types;
   PyObject *__pyx_n_s_value;
   PyObject *__pyx_n_s_wformula;
   PyObject *__pyx_n_s_xlfparser__xlfparser;
   PyObject *__pyx_kp_s_xlfparser__xlfparser_pyx;
   PyObject *__pyx_tuple_;
   PyObject *__pyx_tuple__2;
-  PyObject *__pyx_tuple__4;
-  PyObject *__pyx_codeobj__5;
+  PyObject *__pyx_tuple__5;
+  PyObject *__pyx_codeobj__6;
 } __pyx_mstate;
 
 #if CYTHON_USE_MODULE_STATE
@@ -2295,6 +2396,8 @@ static int __pyx_m_clear(PyObject *m) {
   Py_CLEAR(clear_module_state->__pyx_n_s_OperatorInfix);
   Py_CLEAR(clear_module_state->__pyx_n_s_OperatorPostfix);
   Py_CLEAR(clear_module_state->__pyx_n_s_OperatorPrefix);
+  Py_CLEAR(clear_module_state->__pyx_n_s_Options);
+  Py_CLEAR(clear_module_state->__pyx_n_s_OptionsKwargs);
   Py_CLEAR(clear_module_state->__pyx_n_s_Range);
   Py_CLEAR(clear_module_state->__pyx_n_s_Start);
   Py_CLEAR(clear_module_state->__pyx_n_s_Stop);
@@ -2305,37 +2408,49 @@ static int __pyx_m_clear(PyObject *m) {
   Py_CLEAR(clear_module_state->__pyx_n_s_Type);
   Py_CLEAR(clear_module_state->__pyx_kp_u_Unexpected_token_subtype);
   Py_CLEAR(clear_module_state->__pyx_kp_u_Unexpected_token_type);
+  Py_CLEAR(clear_module_state->__pyx_kp_u_Unexpected_value);
   Py_CLEAR(clear_module_state->__pyx_n_s_Union);
   Py_CLEAR(clear_module_state->__pyx_n_s_Unknown);
   Py_CLEAR(clear_module_state->__pyx_n_s_ValueError);
   Py_CLEAR(clear_module_state->__pyx_n_s_Whitespace);
   Py_CLEAR(clear_module_state->__pyx_kp_u__3);
-  Py_CLEAR(clear_module_state->__pyx_n_s__6);
+  Py_CLEAR(clear_module_state->__pyx_kp_u__4);
+  Py_CLEAR(clear_module_state->__pyx_n_s__7);
   Py_CLEAR(clear_module_state->__pyx_n_s_asyncio_coroutines);
   Py_CLEAR(clear_module_state->__pyx_n_s_cline_in_traceback);
+  Py_CLEAR(clear_module_state->__pyx_n_u_decimal_separator);
+  Py_CLEAR(clear_module_state->__pyx_kp_u_for);
   Py_CLEAR(clear_module_state->__pyx_n_s_formula);
+  Py_CLEAR(clear_module_state->__pyx_n_s_from_kwargs);
   Py_CLEAR(clear_module_state->__pyx_n_s_i);
   Py_CLEAR(clear_module_state->__pyx_n_s_import);
   Py_CLEAR(clear_module_state->__pyx_n_s_is_coroutine);
+  Py_CLEAR(clear_module_state->__pyx_n_s_kwargs);
+  Py_CLEAR(clear_module_state->__pyx_n_u_left_brace);
+  Py_CLEAR(clear_module_state->__pyx_n_u_left_bracket);
+  Py_CLEAR(clear_module_state->__pyx_n_u_list_separator);
   Py_CLEAR(clear_module_state->__pyx_n_s_main);
   Py_CLEAR(clear_module_state->__pyx_n_s_name);
   Py_CLEAR(clear_module_state->__pyx_n_s_options);
   Py_CLEAR(clear_module_state->__pyx_n_s_range);
   Py_CLEAR(clear_module_state->__pyx_n_s_result);
+  Py_CLEAR(clear_module_state->__pyx_n_u_right_brace);
+  Py_CLEAR(clear_module_state->__pyx_n_u_right_bracket);
+  Py_CLEAR(clear_module_state->__pyx_n_u_row_separator);
   Py_CLEAR(clear_module_state->__pyx_n_s_sub_type);
   Py_CLEAR(clear_module_state->__pyx_n_s_test);
+  Py_CLEAR(clear_module_state->__pyx_n_s_token);
   Py_CLEAR(clear_module_state->__pyx_n_s_tokenize);
   Py_CLEAR(clear_module_state->__pyx_n_s_tokens);
   Py_CLEAR(clear_module_state->__pyx_n_s_type);
-  Py_CLEAR(clear_module_state->__pyx_n_s_types);
   Py_CLEAR(clear_module_state->__pyx_n_s_value);
   Py_CLEAR(clear_module_state->__pyx_n_s_wformula);
   Py_CLEAR(clear_module_state->__pyx_n_s_xlfparser__xlfparser);
   Py_CLEAR(clear_module_state->__pyx_kp_s_xlfparser__xlfparser_pyx);
   Py_CLEAR(clear_module_state->__pyx_tuple_);
   Py_CLEAR(clear_module_state->__pyx_tuple__2);
-  Py_CLEAR(clear_module_state->__pyx_tuple__4);
-  Py_CLEAR(clear_module_state->__pyx_codeobj__5);
+  Py_CLEAR(clear_module_state->__pyx_tuple__5);
+  Py_CLEAR(clear_module_state->__pyx_codeobj__6);
   return 0;
 }
 #endif
@@ -2371,6 +2486,8 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
   Py_VISIT(traverse_module_state->__pyx_n_s_OperatorInfix);
   Py_VISIT(traverse_module_state->__pyx_n_s_OperatorPostfix);
   Py_VISIT(traverse_module_state->__pyx_n_s_OperatorPrefix);
+  Py_VISIT(traverse_module_state->__pyx_n_s_Options);
+  Py_VISIT(traverse_module_state->__pyx_n_s_OptionsKwargs);
   Py_VISIT(traverse_module_state->__pyx_n_s_Range);
   Py_VISIT(traverse_module_state->__pyx_n_s_Start);
   Py_VISIT(traverse_module_state->__pyx_n_s_Stop);
@@ -2381,37 +2498,49 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
   Py_VISIT(traverse_module_state->__pyx_n_s_Type);
   Py_VISIT(traverse_module_state->__pyx_kp_u_Unexpected_token_subtype);
   Py_VISIT(traverse_module_state->__pyx_kp_u_Unexpected_token_type);
+  Py_VISIT(traverse_module_state->__pyx_kp_u_Unexpected_value);
   Py_VISIT(traverse_module_state->__pyx_n_s_Union);
   Py_VISIT(traverse_module_state->__pyx_n_s_Unknown);
   Py_VISIT(traverse_module_state->__pyx_n_s_ValueError);
   Py_VISIT(traverse_module_state->__pyx_n_s_Whitespace);
   Py_VISIT(traverse_module_state->__pyx_kp_u__3);
-  Py_VISIT(traverse_module_state->__pyx_n_s__6);
+  Py_VISIT(traverse_module_state->__pyx_kp_u__4);
+  Py_VISIT(traverse_module_state->__pyx_n_s__7);
   Py_VISIT(traverse_module_state->__pyx_n_s_asyncio_coroutines);
   Py_VISIT(traverse_module_state->__pyx_n_s_cline_in_traceback);
+  Py_VISIT(traverse_module_state->__pyx_n_u_decimal_separator);
+  Py_VISIT(traverse_module_state->__pyx_kp_u_for);
   Py_VISIT(traverse_module_state->__pyx_n_s_formula);
+  Py_VISIT(traverse_module_state->__pyx_n_s_from_kwargs);
   Py_VISIT(traverse_module_state->__pyx_n_s_i);
   Py_VISIT(traverse_module_state->__pyx_n_s_import);
   Py_VISIT(traverse_module_state->__pyx_n_s_is_coroutine);
+  Py_VISIT(traverse_module_state->__pyx_n_s_kwargs);
+  Py_VISIT(traverse_module_state->__pyx_n_u_left_brace);
+  Py_VISIT(traverse_module_state->__pyx_n_u_left_bracket);
+  Py_VISIT(traverse_module_state->__pyx_n_u_list_separator);
   Py_VISIT(traverse_module_state->__pyx_n_s_main);
   Py_VISIT(traverse_module_state->__pyx_n_s_name);
   Py_VISIT(traverse_module_state->__pyx_n_s_options);
   Py_VISIT(traverse_module_state->__pyx_n_s_range);
   Py_VISIT(traverse_module_state->__pyx_n_s_result);
+  Py_VISIT(traverse_module_state->__pyx_n_u_right_brace);
+  Py_VISIT(traverse_module_state->__pyx_n_u_right_bracket);
+  Py_VISIT(traverse_module_state->__pyx_n_u_row_separator);
   Py_VISIT(traverse_module_state->__pyx_n_s_sub_type);
   Py_VISIT(traverse_module_state->__pyx_n_s_test);
+  Py_VISIT(traverse_module_state->__pyx_n_s_token);
   Py_VISIT(traverse_module_state->__pyx_n_s_tokenize);
   Py_VISIT(traverse_module_state->__pyx_n_s_tokens);
   Py_VISIT(traverse_module_state->__pyx_n_s_type);
-  Py_VISIT(traverse_module_state->__pyx_n_s_types);
   Py_VISIT(traverse_module_state->__pyx_n_s_value);
   Py_VISIT(traverse_module_state->__pyx_n_s_wformula);
   Py_VISIT(traverse_module_state->__pyx_n_s_xlfparser__xlfparser);
   Py_VISIT(traverse_module_state->__pyx_kp_s_xlfparser__xlfparser_pyx);
   Py_VISIT(traverse_module_state->__pyx_tuple_);
   Py_VISIT(traverse_module_state->__pyx_tuple__2);
-  Py_VISIT(traverse_module_state->__pyx_tuple__4);
-  Py_VISIT(traverse_module_state->__pyx_codeobj__5);
+  Py_VISIT(traverse_module_state->__pyx_tuple__5);
+  Py_VISIT(traverse_module_state->__pyx_codeobj__6);
   return 0;
 }
 #endif
@@ -2465,6 +2594,8 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
 #define __pyx_n_s_OperatorInfix __pyx_mstate_global->__pyx_n_s_OperatorInfix
 #define __pyx_n_s_OperatorPostfix __pyx_mstate_global->__pyx_n_s_OperatorPostfix
 #define __pyx_n_s_OperatorPrefix __pyx_mstate_global->__pyx_n_s_OperatorPrefix
+#define __pyx_n_s_Options __pyx_mstate_global->__pyx_n_s_Options
+#define __pyx_n_s_OptionsKwargs __pyx_mstate_global->__pyx_n_s_OptionsKwargs
 #define __pyx_n_s_Range __pyx_mstate_global->__pyx_n_s_Range
 #define __pyx_n_s_Start __pyx_mstate_global->__pyx_n_s_Start
 #define __pyx_n_s_Stop __pyx_mstate_global->__pyx_n_s_Stop
@@ -2475,40 +2606,52 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
 #define __pyx_n_s_Type __pyx_mstate_global->__pyx_n_s_Type
 #define __pyx_kp_u_Unexpected_token_subtype __pyx_mstate_global->__pyx_kp_u_Unexpected_token_subtype
 #define __pyx_kp_u_Unexpected_token_type __pyx_mstate_global->__pyx_kp_u_Unexpected_token_type
+#define __pyx_kp_u_Unexpected_value __pyx_mstate_global->__pyx_kp_u_Unexpected_value
 #define __pyx_n_s_Union __pyx_mstate_global->__pyx_n_s_Union
 #define __pyx_n_s_Unknown __pyx_mstate_global->__pyx_n_s_Unknown
 #define __pyx_n_s_ValueError __pyx_mstate_global->__pyx_n_s_ValueError
 #define __pyx_n_s_Whitespace __pyx_mstate_global->__pyx_n_s_Whitespace
 #define __pyx_kp_u__3 __pyx_mstate_global->__pyx_kp_u__3
-#define __pyx_n_s__6 __pyx_mstate_global->__pyx_n_s__6
+#define __pyx_kp_u__4 __pyx_mstate_global->__pyx_kp_u__4
+#define __pyx_n_s__7 __pyx_mstate_global->__pyx_n_s__7
 #define __pyx_n_s_asyncio_coroutines __pyx_mstate_global->__pyx_n_s_asyncio_coroutines
 #define __pyx_n_s_cline_in_traceback __pyx_mstate_global->__pyx_n_s_cline_in_traceback
+#define __pyx_n_u_decimal_separator __pyx_mstate_global->__pyx_n_u_decimal_separator
+#define __pyx_kp_u_for __pyx_mstate_global->__pyx_kp_u_for
 #define __pyx_n_s_formula __pyx_mstate_global->__pyx_n_s_formula
+#define __pyx_n_s_from_kwargs __pyx_mstate_global->__pyx_n_s_from_kwargs
 #define __pyx_n_s_i __pyx_mstate_global->__pyx_n_s_i
 #define __pyx_n_s_import __pyx_mstate_global->__pyx_n_s_import
 #define __pyx_n_s_is_coroutine __pyx_mstate_global->__pyx_n_s_is_coroutine
+#define __pyx_n_s_kwargs __pyx_mstate_global->__pyx_n_s_kwargs
+#define __pyx_n_u_left_brace __pyx_mstate_global->__pyx_n_u_left_brace
+#define __pyx_n_u_left_bracket __pyx_mstate_global->__pyx_n_u_left_bracket
+#define __pyx_n_u_list_separator __pyx_mstate_global->__pyx_n_u_list_separator
 #define __pyx_n_s_main __pyx_mstate_global->__pyx_n_s_main
 #define __pyx_n_s_name __pyx_mstate_global->__pyx_n_s_name
 #define __pyx_n_s_options __pyx_mstate_global->__pyx_n_s_options
 #define __pyx_n_s_range __pyx_mstate_global->__pyx_n_s_range
 #define __pyx_n_s_result __pyx_mstate_global->__pyx_n_s_result
+#define __pyx_n_u_right_brace __pyx_mstate_global->__pyx_n_u_right_brace
+#define __pyx_n_u_right_bracket __pyx_mstate_global->__pyx_n_u_right_bracket
+#define __pyx_n_u_row_separator __pyx_mstate_global->__pyx_n_u_row_separator
 #define __pyx_n_s_sub_type __pyx_mstate_global->__pyx_n_s_sub_type
 #define __pyx_n_s_test __pyx_mstate_global->__pyx_n_s_test
+#define __pyx_n_s_token __pyx_mstate_global->__pyx_n_s_token
 #define __pyx_n_s_tokenize __pyx_mstate_global->__pyx_n_s_tokenize
 #define __pyx_n_s_tokens __pyx_mstate_global->__pyx_n_s_tokens
 #define __pyx_n_s_type __pyx_mstate_global->__pyx_n_s_type
-#define __pyx_n_s_types __pyx_mstate_global->__pyx_n_s_types
 #define __pyx_n_s_value __pyx_mstate_global->__pyx_n_s_value
 #define __pyx_n_s_wformula __pyx_mstate_global->__pyx_n_s_wformula
 #define __pyx_n_s_xlfparser__xlfparser __pyx_mstate_global->__pyx_n_s_xlfparser__xlfparser
 #define __pyx_kp_s_xlfparser__xlfparser_pyx __pyx_mstate_global->__pyx_kp_s_xlfparser__xlfparser_pyx
 #define __pyx_tuple_ __pyx_mstate_global->__pyx_tuple_
 #define __pyx_tuple__2 __pyx_mstate_global->__pyx_tuple__2
-#define __pyx_tuple__4 __pyx_mstate_global->__pyx_tuple__4
-#define __pyx_codeobj__5 __pyx_mstate_global->__pyx_codeobj__5
+#define __pyx_tuple__5 __pyx_mstate_global->__pyx_tuple__5
+#define __pyx_codeobj__6 __pyx_mstate_global->__pyx_codeobj__6
 /* #### Code section: module_code ### */
 
-/* "xlfparser/_xlfparser.pyx":17
+/* "xlfparser/_xlfparser.pyx":19
  * 
  * 
  * cdef wstring _to_wstring(s):             # <<<<<<<<<<<<<<
@@ -2526,17 +2669,17 @@ static std::wstring __pyx_f_9xlfparser_10_xlfparser__to_wstring(PyObject *__pyx_
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
 
-  /* "xlfparser/_xlfparser.pyx":19
+  /* "xlfparser/_xlfparser.pyx":21
  * cdef wstring _to_wstring(s):
  *     cdef Py_ssize_t size;
  *     cdef wchar_t* wstr = PyUnicode_AsWideCharString(s, &size)             # <<<<<<<<<<<<<<
  *     return wstring(wstr, size)
  * 
  */
-  __pyx_t_1 = PyUnicode_AsWideCharString(__pyx_v_s, (&__pyx_v_size)); if (unlikely(__pyx_t_1 == ((wchar_t *)NULL))) __PYX_ERR(0, 19, __pyx_L1_error)
+  __pyx_t_1 = PyUnicode_AsWideCharString(__pyx_v_s, (&__pyx_v_size)); if (unlikely(__pyx_t_1 == ((wchar_t *)NULL))) __PYX_ERR(0, 21, __pyx_L1_error)
   __pyx_v_wstr = __pyx_t_1;
 
-  /* "xlfparser/_xlfparser.pyx":20
+  /* "xlfparser/_xlfparser.pyx":22
  *     cdef Py_ssize_t size;
  *     cdef wchar_t* wstr = PyUnicode_AsWideCharString(s, &size)
  *     return wstring(wstr, size)             # <<<<<<<<<<<<<<
@@ -2547,12 +2690,12 @@ static std::wstring __pyx_f_9xlfparser_10_xlfparser__to_wstring(PyObject *__pyx_
     __pyx_t_2 = std::wstring(__pyx_v_wstr, __pyx_v_size);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(0, 20, __pyx_L1_error)
+    __PYX_ERR(0, 22, __pyx_L1_error)
   }
   __pyx_r = __pyx_t_2;
   goto __pyx_L0;
 
-  /* "xlfparser/_xlfparser.pyx":17
+  /* "xlfparser/_xlfparser.pyx":19
  * 
  * 
  * cdef wstring _to_wstring(s):             # <<<<<<<<<<<<<<
@@ -2568,7 +2711,7 @@ static std::wstring __pyx_f_9xlfparser_10_xlfparser__to_wstring(PyObject *__pyx_
   return __pyx_r;
 }
 
-/* "xlfparser/_xlfparser.pyx":23
+/* "xlfparser/_xlfparser.pyx":25
  * 
  * 
  * cdef object _from_wstring(wstring s):             # <<<<<<<<<<<<<<
@@ -2587,7 +2730,7 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_wstring(std::wstring __py
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_from_wstring", 1);
 
-  /* "xlfparser/_xlfparser.pyx":24
+  /* "xlfparser/_xlfparser.pyx":26
  * 
  * cdef object _from_wstring(wstring s):
  *     return PyUnicode_FromWideChar(s.c_str(), s.size())             # <<<<<<<<<<<<<<
@@ -2599,21 +2742,21 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_wstring(std::wstring __py
     __pyx_t_1 = __pyx_v_s.c_str();
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(0, 24, __pyx_L1_error)
+    __PYX_ERR(0, 26, __pyx_L1_error)
   }
   try {
     __pyx_t_2 = __pyx_v_s.size();
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(0, 24, __pyx_L1_error)
+    __PYX_ERR(0, 26, __pyx_L1_error)
   }
-  __pyx_t_3 = PyUnicode_FromWideChar(__pyx_t_1, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 24, __pyx_L1_error)
+  __pyx_t_3 = PyUnicode_FromWideChar(__pyx_t_1, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 26, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_r = __pyx_t_3;
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "xlfparser/_xlfparser.pyx":23
+  /* "xlfparser/_xlfparser.pyx":25
  * 
  * 
  * cdef object _from_wstring(wstring s):             # <<<<<<<<<<<<<<
@@ -2632,12 +2775,12 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_wstring(std::wstring __py
   return __pyx_r;
 }
 
-/* "xlfparser/_xlfparser.pyx":27
+/* "xlfparser/_xlfparser.pyx":29
  * 
  * 
  * cdef object _from_type(_Type t):             # <<<<<<<<<<<<<<
  *     if <int>t == <int>Unknown:
- *         return Type.Unknown
+ *         return Token.Type.Unknown
  */
 
 static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_type(xlfparser::Token::Type __pyx_v_t) {
@@ -2651,63 +2794,30 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_type(xlfparser::Token::Ty
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_from_type", 1);
 
-  /* "xlfparser/_xlfparser.pyx":28
+  /* "xlfparser/_xlfparser.pyx":30
  * 
  * cdef object _from_type(_Type t):
  *     if <int>t == <int>Unknown:             # <<<<<<<<<<<<<<
- *         return Type.Unknown
+ *         return Token.Type.Unknown
  *     elif <int>t == <int>Operand:
  */
   __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::Unknown));
   if (__pyx_t_1) {
 
-    /* "xlfparser/_xlfparser.pyx":29
+    /* "xlfparser/_xlfparser.pyx":31
  * cdef object _from_type(_Type t):
  *     if <int>t == <int>Unknown:
- *         return Type.Unknown             # <<<<<<<<<<<<<<
+ *         return Token.Type.Unknown             # <<<<<<<<<<<<<<
  *     elif <int>t == <int>Operand:
- *         return Type.Operand
+ *         return Token.Type.Operand
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 29, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 31, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Unknown); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 29, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 31, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_r = __pyx_t_3;
-    __pyx_t_3 = 0;
-    goto __pyx_L0;
-
-    /* "xlfparser/_xlfparser.pyx":28
- * 
- * cdef object _from_type(_Type t):
- *     if <int>t == <int>Unknown:             # <<<<<<<<<<<<<<
- *         return Type.Unknown
- *     elif <int>t == <int>Operand:
- */
-  }
-
-  /* "xlfparser/_xlfparser.pyx":30
- *     if <int>t == <int>Unknown:
- *         return Type.Unknown
- *     elif <int>t == <int>Operand:             # <<<<<<<<<<<<<<
- *         return Type.Operand
- *     elif <int>t == <int>Function:
- */
-  __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::Operand));
-  if (__pyx_t_1) {
-
-    /* "xlfparser/_xlfparser.pyx":31
- *         return Type.Unknown
- *     elif <int>t == <int>Operand:
- *         return Type.Operand             # <<<<<<<<<<<<<<
- *     elif <int>t == <int>Function:
- *         return Type.Function
- */
-    __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 31, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Operand); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 31, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Unknown); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 31, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_r = __pyx_t_2;
@@ -2715,71 +2825,77 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_type(xlfparser::Token::Ty
     goto __pyx_L0;
 
     /* "xlfparser/_xlfparser.pyx":30
- *     if <int>t == <int>Unknown:
- *         return Type.Unknown
- *     elif <int>t == <int>Operand:             # <<<<<<<<<<<<<<
- *         return Type.Operand
- *     elif <int>t == <int>Function:
+ * 
+ * cdef object _from_type(_Type t):
+ *     if <int>t == <int>Unknown:             # <<<<<<<<<<<<<<
+ *         return Token.Type.Unknown
+ *     elif <int>t == <int>Operand:
  */
   }
 
   /* "xlfparser/_xlfparser.pyx":32
+ *     if <int>t == <int>Unknown:
+ *         return Token.Type.Unknown
+ *     elif <int>t == <int>Operand:             # <<<<<<<<<<<<<<
+ *         return Token.Type.Operand
+ *     elif <int>t == <int>Function:
+ */
+  __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::Operand));
+  if (__pyx_t_1) {
+
+    /* "xlfparser/_xlfparser.pyx":33
+ *         return Token.Type.Unknown
  *     elif <int>t == <int>Operand:
- *         return Type.Operand
+ *         return Token.Type.Operand             # <<<<<<<<<<<<<<
+ *     elif <int>t == <int>Function:
+ *         return Token.Type.Function
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 33, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 33, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Operand); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 33, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_r = __pyx_t_2;
+    __pyx_t_2 = 0;
+    goto __pyx_L0;
+
+    /* "xlfparser/_xlfparser.pyx":32
+ *     if <int>t == <int>Unknown:
+ *         return Token.Type.Unknown
+ *     elif <int>t == <int>Operand:             # <<<<<<<<<<<<<<
+ *         return Token.Type.Operand
+ *     elif <int>t == <int>Function:
+ */
+  }
+
+  /* "xlfparser/_xlfparser.pyx":34
+ *     elif <int>t == <int>Operand:
+ *         return Token.Type.Operand
  *     elif <int>t == <int>Function:             # <<<<<<<<<<<<<<
- *         return Type.Function
+ *         return Token.Type.Function
  *     elif <int>t == <int>Array:
  */
   __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::Function));
   if (__pyx_t_1) {
 
-    /* "xlfparser/_xlfparser.pyx":33
- *         return Type.Operand
+    /* "xlfparser/_xlfparser.pyx":35
+ *         return Token.Type.Operand
  *     elif <int>t == <int>Function:
- *         return Type.Function             # <<<<<<<<<<<<<<
+ *         return Token.Type.Function             # <<<<<<<<<<<<<<
  *     elif <int>t == <int>Array:
- *         return Type.Array
+ *         return Token.Type.Array
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 33, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 35, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Function); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 33, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 35, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_r = __pyx_t_3;
-    __pyx_t_3 = 0;
-    goto __pyx_L0;
-
-    /* "xlfparser/_xlfparser.pyx":32
- *     elif <int>t == <int>Operand:
- *         return Type.Operand
- *     elif <int>t == <int>Function:             # <<<<<<<<<<<<<<
- *         return Type.Function
- *     elif <int>t == <int>Array:
- */
-  }
-
-  /* "xlfparser/_xlfparser.pyx":34
- *     elif <int>t == <int>Function:
- *         return Type.Function
- *     elif <int>t == <int>Array:             # <<<<<<<<<<<<<<
- *         return Type.Array
- *     elif <int>t == <int>ArrayRow:
- */
-  __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::Array));
-  if (__pyx_t_1) {
-
-    /* "xlfparser/_xlfparser.pyx":35
- *         return Type.Function
- *     elif <int>t == <int>Array:
- *         return Type.Array             # <<<<<<<<<<<<<<
- *     elif <int>t == <int>ArrayRow:
- *         return Type.ArrayRow
- */
-    __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 35, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Array); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 35, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Function); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 35, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_r = __pyx_t_2;
@@ -2787,71 +2903,77 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_type(xlfparser::Token::Ty
     goto __pyx_L0;
 
     /* "xlfparser/_xlfparser.pyx":34
- *     elif <int>t == <int>Function:
- *         return Type.Function
- *     elif <int>t == <int>Array:             # <<<<<<<<<<<<<<
- *         return Type.Array
- *     elif <int>t == <int>ArrayRow:
+ *     elif <int>t == <int>Operand:
+ *         return Token.Type.Operand
+ *     elif <int>t == <int>Function:             # <<<<<<<<<<<<<<
+ *         return Token.Type.Function
+ *     elif <int>t == <int>Array:
  */
   }
 
   /* "xlfparser/_xlfparser.pyx":36
+ *     elif <int>t == <int>Function:
+ *         return Token.Type.Function
+ *     elif <int>t == <int>Array:             # <<<<<<<<<<<<<<
+ *         return Token.Type.Array
+ *     elif <int>t == <int>ArrayRow:
+ */
+  __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::Array));
+  if (__pyx_t_1) {
+
+    /* "xlfparser/_xlfparser.pyx":37
+ *         return Token.Type.Function
  *     elif <int>t == <int>Array:
- *         return Type.Array
+ *         return Token.Type.Array             # <<<<<<<<<<<<<<
+ *     elif <int>t == <int>ArrayRow:
+ *         return Token.Type.ArrayRow
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 37, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 37, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Array); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 37, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_r = __pyx_t_2;
+    __pyx_t_2 = 0;
+    goto __pyx_L0;
+
+    /* "xlfparser/_xlfparser.pyx":36
+ *     elif <int>t == <int>Function:
+ *         return Token.Type.Function
+ *     elif <int>t == <int>Array:             # <<<<<<<<<<<<<<
+ *         return Token.Type.Array
+ *     elif <int>t == <int>ArrayRow:
+ */
+  }
+
+  /* "xlfparser/_xlfparser.pyx":38
+ *     elif <int>t == <int>Array:
+ *         return Token.Type.Array
  *     elif <int>t == <int>ArrayRow:             # <<<<<<<<<<<<<<
- *         return Type.ArrayRow
+ *         return Token.Type.ArrayRow
  *     elif <int>t == <int>Subexpression:
  */
   __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::ArrayRow));
   if (__pyx_t_1) {
 
-    /* "xlfparser/_xlfparser.pyx":37
- *         return Type.Array
+    /* "xlfparser/_xlfparser.pyx":39
+ *         return Token.Type.Array
  *     elif <int>t == <int>ArrayRow:
- *         return Type.ArrayRow             # <<<<<<<<<<<<<<
+ *         return Token.Type.ArrayRow             # <<<<<<<<<<<<<<
  *     elif <int>t == <int>Subexpression:
- *         return Type.Subexpression
+ *         return Token.Type.Subexpression
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 37, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 39, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_ArrayRow); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 37, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 39, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_r = __pyx_t_3;
-    __pyx_t_3 = 0;
-    goto __pyx_L0;
-
-    /* "xlfparser/_xlfparser.pyx":36
- *     elif <int>t == <int>Array:
- *         return Type.Array
- *     elif <int>t == <int>ArrayRow:             # <<<<<<<<<<<<<<
- *         return Type.ArrayRow
- *     elif <int>t == <int>Subexpression:
- */
-  }
-
-  /* "xlfparser/_xlfparser.pyx":38
- *     elif <int>t == <int>ArrayRow:
- *         return Type.ArrayRow
- *     elif <int>t == <int>Subexpression:             # <<<<<<<<<<<<<<
- *         return Type.Subexpression
- *     elif <int>t == <int>Argument:
- */
-  __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::Subexpression));
-  if (__pyx_t_1) {
-
-    /* "xlfparser/_xlfparser.pyx":39
- *         return Type.ArrayRow
- *     elif <int>t == <int>Subexpression:
- *         return Type.Subexpression             # <<<<<<<<<<<<<<
- *     elif <int>t == <int>Argument:
- *         return Type.Argument
- */
-    __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 39, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Subexpression); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 39, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_ArrayRow); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 39, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_r = __pyx_t_2;
@@ -2859,71 +2981,77 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_type(xlfparser::Token::Ty
     goto __pyx_L0;
 
     /* "xlfparser/_xlfparser.pyx":38
- *     elif <int>t == <int>ArrayRow:
- *         return Type.ArrayRow
- *     elif <int>t == <int>Subexpression:             # <<<<<<<<<<<<<<
- *         return Type.Subexpression
- *     elif <int>t == <int>Argument:
+ *     elif <int>t == <int>Array:
+ *         return Token.Type.Array
+ *     elif <int>t == <int>ArrayRow:             # <<<<<<<<<<<<<<
+ *         return Token.Type.ArrayRow
+ *     elif <int>t == <int>Subexpression:
  */
   }
 
   /* "xlfparser/_xlfparser.pyx":40
+ *     elif <int>t == <int>ArrayRow:
+ *         return Token.Type.ArrayRow
+ *     elif <int>t == <int>Subexpression:             # <<<<<<<<<<<<<<
+ *         return Token.Type.Subexpression
+ *     elif <int>t == <int>Argument:
+ */
+  __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::Subexpression));
+  if (__pyx_t_1) {
+
+    /* "xlfparser/_xlfparser.pyx":41
+ *         return Token.Type.ArrayRow
  *     elif <int>t == <int>Subexpression:
- *         return Type.Subexpression
+ *         return Token.Type.Subexpression             # <<<<<<<<<<<<<<
+ *     elif <int>t == <int>Argument:
+ *         return Token.Type.Argument
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 41, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 41, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Subexpression); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 41, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_r = __pyx_t_2;
+    __pyx_t_2 = 0;
+    goto __pyx_L0;
+
+    /* "xlfparser/_xlfparser.pyx":40
+ *     elif <int>t == <int>ArrayRow:
+ *         return Token.Type.ArrayRow
+ *     elif <int>t == <int>Subexpression:             # <<<<<<<<<<<<<<
+ *         return Token.Type.Subexpression
+ *     elif <int>t == <int>Argument:
+ */
+  }
+
+  /* "xlfparser/_xlfparser.pyx":42
+ *     elif <int>t == <int>Subexpression:
+ *         return Token.Type.Subexpression
  *     elif <int>t == <int>Argument:             # <<<<<<<<<<<<<<
- *         return Type.Argument
+ *         return Token.Type.Argument
  *     elif <int>t == <int>OperatorPrefix:
  */
   __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::Argument));
   if (__pyx_t_1) {
 
-    /* "xlfparser/_xlfparser.pyx":41
- *         return Type.Subexpression
+    /* "xlfparser/_xlfparser.pyx":43
+ *         return Token.Type.Subexpression
  *     elif <int>t == <int>Argument:
- *         return Type.Argument             # <<<<<<<<<<<<<<
+ *         return Token.Type.Argument             # <<<<<<<<<<<<<<
  *     elif <int>t == <int>OperatorPrefix:
- *         return Type.OperatorPrefix
+ *         return Token.Type.OperatorPrefix
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 41, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 43, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Argument); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 41, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 43, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_r = __pyx_t_3;
-    __pyx_t_3 = 0;
-    goto __pyx_L0;
-
-    /* "xlfparser/_xlfparser.pyx":40
- *     elif <int>t == <int>Subexpression:
- *         return Type.Subexpression
- *     elif <int>t == <int>Argument:             # <<<<<<<<<<<<<<
- *         return Type.Argument
- *     elif <int>t == <int>OperatorPrefix:
- */
-  }
-
-  /* "xlfparser/_xlfparser.pyx":42
- *     elif <int>t == <int>Argument:
- *         return Type.Argument
- *     elif <int>t == <int>OperatorPrefix:             # <<<<<<<<<<<<<<
- *         return Type.OperatorPrefix
- *     elif <int>t == <int>OperatorInfix:
- */
-  __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::OperatorPrefix));
-  if (__pyx_t_1) {
-
-    /* "xlfparser/_xlfparser.pyx":43
- *         return Type.Argument
- *     elif <int>t == <int>OperatorPrefix:
- *         return Type.OperatorPrefix             # <<<<<<<<<<<<<<
- *     elif <int>t == <int>OperatorInfix:
- *         return Type.OperatorInfix
- */
-    __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 43, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_OperatorPrefix); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 43, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Argument); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 43, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_r = __pyx_t_2;
@@ -2931,71 +3059,77 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_type(xlfparser::Token::Ty
     goto __pyx_L0;
 
     /* "xlfparser/_xlfparser.pyx":42
- *     elif <int>t == <int>Argument:
- *         return Type.Argument
- *     elif <int>t == <int>OperatorPrefix:             # <<<<<<<<<<<<<<
- *         return Type.OperatorPrefix
- *     elif <int>t == <int>OperatorInfix:
+ *     elif <int>t == <int>Subexpression:
+ *         return Token.Type.Subexpression
+ *     elif <int>t == <int>Argument:             # <<<<<<<<<<<<<<
+ *         return Token.Type.Argument
+ *     elif <int>t == <int>OperatorPrefix:
  */
   }
 
   /* "xlfparser/_xlfparser.pyx":44
+ *     elif <int>t == <int>Argument:
+ *         return Token.Type.Argument
+ *     elif <int>t == <int>OperatorPrefix:             # <<<<<<<<<<<<<<
+ *         return Token.Type.OperatorPrefix
+ *     elif <int>t == <int>OperatorInfix:
+ */
+  __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::OperatorPrefix));
+  if (__pyx_t_1) {
+
+    /* "xlfparser/_xlfparser.pyx":45
+ *         return Token.Type.Argument
  *     elif <int>t == <int>OperatorPrefix:
- *         return Type.OperatorPrefix
+ *         return Token.Type.OperatorPrefix             # <<<<<<<<<<<<<<
+ *     elif <int>t == <int>OperatorInfix:
+ *         return Token.Type.OperatorInfix
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 45, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 45, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_OperatorPrefix); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 45, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_r = __pyx_t_2;
+    __pyx_t_2 = 0;
+    goto __pyx_L0;
+
+    /* "xlfparser/_xlfparser.pyx":44
+ *     elif <int>t == <int>Argument:
+ *         return Token.Type.Argument
+ *     elif <int>t == <int>OperatorPrefix:             # <<<<<<<<<<<<<<
+ *         return Token.Type.OperatorPrefix
+ *     elif <int>t == <int>OperatorInfix:
+ */
+  }
+
+  /* "xlfparser/_xlfparser.pyx":46
+ *     elif <int>t == <int>OperatorPrefix:
+ *         return Token.Type.OperatorPrefix
  *     elif <int>t == <int>OperatorInfix:             # <<<<<<<<<<<<<<
- *         return Type.OperatorInfix
+ *         return Token.Type.OperatorInfix
  *     elif <int>t == <int>OperatorPostfix:
  */
   __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::OperatorInfix));
   if (__pyx_t_1) {
 
-    /* "xlfparser/_xlfparser.pyx":45
- *         return Type.OperatorPrefix
+    /* "xlfparser/_xlfparser.pyx":47
+ *         return Token.Type.OperatorPrefix
  *     elif <int>t == <int>OperatorInfix:
- *         return Type.OperatorInfix             # <<<<<<<<<<<<<<
+ *         return Token.Type.OperatorInfix             # <<<<<<<<<<<<<<
  *     elif <int>t == <int>OperatorPostfix:
- *         return Type.OperatorPostfix
+ *         return Token.Type.OperatorPostfix
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 45, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 47, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_OperatorInfix); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 45, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 47, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_r = __pyx_t_3;
-    __pyx_t_3 = 0;
-    goto __pyx_L0;
-
-    /* "xlfparser/_xlfparser.pyx":44
- *     elif <int>t == <int>OperatorPrefix:
- *         return Type.OperatorPrefix
- *     elif <int>t == <int>OperatorInfix:             # <<<<<<<<<<<<<<
- *         return Type.OperatorInfix
- *     elif <int>t == <int>OperatorPostfix:
- */
-  }
-
-  /* "xlfparser/_xlfparser.pyx":46
- *     elif <int>t == <int>OperatorInfix:
- *         return Type.OperatorInfix
- *     elif <int>t == <int>OperatorPostfix:             # <<<<<<<<<<<<<<
- *         return Type.OperatorPostfix
- *     elif <int>t == <int>Whitespace:
- */
-  __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::OperatorPostfix));
-  if (__pyx_t_1) {
-
-    /* "xlfparser/_xlfparser.pyx":47
- *         return Type.OperatorInfix
- *     elif <int>t == <int>OperatorPostfix:
- *         return Type.OperatorPostfix             # <<<<<<<<<<<<<<
- *     elif <int>t == <int>Whitespace:
- *         return Type.Whitespace
- */
-    __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 47, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_OperatorPostfix); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 47, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_OperatorInfix); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 47, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_r = __pyx_t_2;
@@ -3003,69 +3137,111 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_type(xlfparser::Token::Ty
     goto __pyx_L0;
 
     /* "xlfparser/_xlfparser.pyx":46
- *     elif <int>t == <int>OperatorInfix:
- *         return Type.OperatorInfix
- *     elif <int>t == <int>OperatorPostfix:             # <<<<<<<<<<<<<<
- *         return Type.OperatorPostfix
- *     elif <int>t == <int>Whitespace:
+ *     elif <int>t == <int>OperatorPrefix:
+ *         return Token.Type.OperatorPrefix
+ *     elif <int>t == <int>OperatorInfix:             # <<<<<<<<<<<<<<
+ *         return Token.Type.OperatorInfix
+ *     elif <int>t == <int>OperatorPostfix:
  */
   }
 
   /* "xlfparser/_xlfparser.pyx":48
+ *     elif <int>t == <int>OperatorInfix:
+ *         return Token.Type.OperatorInfix
+ *     elif <int>t == <int>OperatorPostfix:             # <<<<<<<<<<<<<<
+ *         return Token.Type.OperatorPostfix
+ *     elif <int>t == <int>Whitespace:
+ */
+  __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::OperatorPostfix));
+  if (__pyx_t_1) {
+
+    /* "xlfparser/_xlfparser.pyx":49
+ *         return Token.Type.OperatorInfix
  *     elif <int>t == <int>OperatorPostfix:
- *         return Type.OperatorPostfix
+ *         return Token.Type.OperatorPostfix             # <<<<<<<<<<<<<<
+ *     elif <int>t == <int>Whitespace:
+ *         return Token.Type.Whitespace
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 49, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 49, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_OperatorPostfix); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 49, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_r = __pyx_t_2;
+    __pyx_t_2 = 0;
+    goto __pyx_L0;
+
+    /* "xlfparser/_xlfparser.pyx":48
+ *     elif <int>t == <int>OperatorInfix:
+ *         return Token.Type.OperatorInfix
+ *     elif <int>t == <int>OperatorPostfix:             # <<<<<<<<<<<<<<
+ *         return Token.Type.OperatorPostfix
+ *     elif <int>t == <int>Whitespace:
+ */
+  }
+
+  /* "xlfparser/_xlfparser.pyx":50
+ *     elif <int>t == <int>OperatorPostfix:
+ *         return Token.Type.OperatorPostfix
  *     elif <int>t == <int>Whitespace:             # <<<<<<<<<<<<<<
- *         return Type.Whitespace
+ *         return Token.Type.Whitespace
  *     raise ValueError("Unexpected token type")
  */
   __pyx_t_1 = (((int)__pyx_v_t) == ((int)xlfparser::Token::Type::Whitespace));
   if (__pyx_t_1) {
 
-    /* "xlfparser/_xlfparser.pyx":49
- *         return Type.OperatorPostfix
+    /* "xlfparser/_xlfparser.pyx":51
+ *         return Token.Type.OperatorPostfix
  *     elif <int>t == <int>Whitespace:
- *         return Type.Whitespace             # <<<<<<<<<<<<<<
+ *         return Token.Type.Whitespace             # <<<<<<<<<<<<<<
  *     raise ValueError("Unexpected token type")
  * 
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 49, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 51, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Whitespace); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 49, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Type); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 51, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_r = __pyx_t_3;
-    __pyx_t_3 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Whitespace); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 51, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_r = __pyx_t_2;
+    __pyx_t_2 = 0;
     goto __pyx_L0;
 
-    /* "xlfparser/_xlfparser.pyx":48
+    /* "xlfparser/_xlfparser.pyx":50
  *     elif <int>t == <int>OperatorPostfix:
- *         return Type.OperatorPostfix
+ *         return Token.Type.OperatorPostfix
  *     elif <int>t == <int>Whitespace:             # <<<<<<<<<<<<<<
- *         return Type.Whitespace
+ *         return Token.Type.Whitespace
  *     raise ValueError("Unexpected token type")
  */
   }
 
-  /* "xlfparser/_xlfparser.pyx":50
+  /* "xlfparser/_xlfparser.pyx":52
  *     elif <int>t == <int>Whitespace:
- *         return Type.Whitespace
+ *         return Token.Type.Whitespace
  *     raise ValueError("Unexpected token type")             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple_, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 50, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_Raise(__pyx_t_3, 0, 0, 0);
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __PYX_ERR(0, 50, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple_, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 52, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_Raise(__pyx_t_2, 0, 0, 0);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __PYX_ERR(0, 52, __pyx_L1_error)
 
-  /* "xlfparser/_xlfparser.pyx":27
+  /* "xlfparser/_xlfparser.pyx":29
  * 
  * 
  * cdef object _from_type(_Type t):             # <<<<<<<<<<<<<<
  *     if <int>t == <int>Unknown:
- *         return Type.Unknown
+ *         return Token.Type.Unknown
  */
 
   /* function exit code */
@@ -3080,12 +3256,12 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_type(xlfparser::Token::Ty
   return __pyx_r;
 }
 
-/* "xlfparser/_xlfparser.pyx":53
+/* "xlfparser/_xlfparser.pyx":55
  * 
  * 
  * cdef object _from_subtype(_Subtype st):             # <<<<<<<<<<<<<<
  *     if <int>st == <int>_None:
- *         return SubType._None
+ *         return Token.SubType._None
  */
 
 static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_subtype(xlfparser::Token::Subtype __pyx_v_st) {
@@ -3099,63 +3275,30 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_subtype(xlfparser::Token:
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_from_subtype", 1);
 
-  /* "xlfparser/_xlfparser.pyx":54
+  /* "xlfparser/_xlfparser.pyx":56
  * 
  * cdef object _from_subtype(_Subtype st):
  *     if <int>st == <int>_None:             # <<<<<<<<<<<<<<
- *         return SubType._None
+ *         return Token.SubType._None
  *     elif <int>st == <int>Start:
  */
   __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::None));
   if (__pyx_t_1) {
 
-    /* "xlfparser/_xlfparser.pyx":55
+    /* "xlfparser/_xlfparser.pyx":57
  * cdef object _from_subtype(_Subtype st):
  *     if <int>st == <int>_None:
- *         return SubType._None             # <<<<<<<<<<<<<<
+ *         return Token.SubType._None             # <<<<<<<<<<<<<<
  *     elif <int>st == <int>Start:
- *         return SubType.Start
+ *         return Token.SubType.Start
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 55, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 57, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_None); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 55, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 57, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_r = __pyx_t_3;
-    __pyx_t_3 = 0;
-    goto __pyx_L0;
-
-    /* "xlfparser/_xlfparser.pyx":54
- * 
- * cdef object _from_subtype(_Subtype st):
- *     if <int>st == <int>_None:             # <<<<<<<<<<<<<<
- *         return SubType._None
- *     elif <int>st == <int>Start:
- */
-  }
-
-  /* "xlfparser/_xlfparser.pyx":56
- *     if <int>st == <int>_None:
- *         return SubType._None
- *     elif <int>st == <int>Start:             # <<<<<<<<<<<<<<
- *         return SubType.Start
- *     elif <int>st == <int>Stop:
- */
-  __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Start));
-  if (__pyx_t_1) {
-
-    /* "xlfparser/_xlfparser.pyx":57
- *         return SubType._None
- *     elif <int>st == <int>Start:
- *         return SubType.Start             # <<<<<<<<<<<<<<
- *     elif <int>st == <int>Stop:
- *         return SubType.Stop
- */
-    __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 57, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Start); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 57, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_None); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 57, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_r = __pyx_t_2;
@@ -3163,71 +3306,77 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_subtype(xlfparser::Token:
     goto __pyx_L0;
 
     /* "xlfparser/_xlfparser.pyx":56
- *     if <int>st == <int>_None:
- *         return SubType._None
- *     elif <int>st == <int>Start:             # <<<<<<<<<<<<<<
- *         return SubType.Start
- *     elif <int>st == <int>Stop:
+ * 
+ * cdef object _from_subtype(_Subtype st):
+ *     if <int>st == <int>_None:             # <<<<<<<<<<<<<<
+ *         return Token.SubType._None
+ *     elif <int>st == <int>Start:
  */
   }
 
   /* "xlfparser/_xlfparser.pyx":58
+ *     if <int>st == <int>_None:
+ *         return Token.SubType._None
+ *     elif <int>st == <int>Start:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Start
+ *     elif <int>st == <int>Stop:
+ */
+  __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Start));
+  if (__pyx_t_1) {
+
+    /* "xlfparser/_xlfparser.pyx":59
+ *         return Token.SubType._None
  *     elif <int>st == <int>Start:
- *         return SubType.Start
+ *         return Token.SubType.Start             # <<<<<<<<<<<<<<
+ *     elif <int>st == <int>Stop:
+ *         return Token.SubType.Stop
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 59, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 59, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Start); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 59, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_r = __pyx_t_2;
+    __pyx_t_2 = 0;
+    goto __pyx_L0;
+
+    /* "xlfparser/_xlfparser.pyx":58
+ *     if <int>st == <int>_None:
+ *         return Token.SubType._None
+ *     elif <int>st == <int>Start:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Start
+ *     elif <int>st == <int>Stop:
+ */
+  }
+
+  /* "xlfparser/_xlfparser.pyx":60
+ *     elif <int>st == <int>Start:
+ *         return Token.SubType.Start
  *     elif <int>st == <int>Stop:             # <<<<<<<<<<<<<<
- *         return SubType.Stop
+ *         return Token.SubType.Stop
  *     elif <int>st == <int>Text:
  */
   __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Stop));
   if (__pyx_t_1) {
 
-    /* "xlfparser/_xlfparser.pyx":59
- *         return SubType.Start
+    /* "xlfparser/_xlfparser.pyx":61
+ *         return Token.SubType.Start
  *     elif <int>st == <int>Stop:
- *         return SubType.Stop             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Stop             # <<<<<<<<<<<<<<
  *     elif <int>st == <int>Text:
- *         return SubType.Text
+ *         return Token.SubType.Text
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 59, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 61, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Stop); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 59, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 61, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_r = __pyx_t_3;
-    __pyx_t_3 = 0;
-    goto __pyx_L0;
-
-    /* "xlfparser/_xlfparser.pyx":58
- *     elif <int>st == <int>Start:
- *         return SubType.Start
- *     elif <int>st == <int>Stop:             # <<<<<<<<<<<<<<
- *         return SubType.Stop
- *     elif <int>st == <int>Text:
- */
-  }
-
-  /* "xlfparser/_xlfparser.pyx":60
- *     elif <int>st == <int>Stop:
- *         return SubType.Stop
- *     elif <int>st == <int>Text:             # <<<<<<<<<<<<<<
- *         return SubType.Text
- *     if <int>st == <int>Number:
- */
-  __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Text));
-  if (__pyx_t_1) {
-
-    /* "xlfparser/_xlfparser.pyx":61
- *         return SubType.Stop
- *     elif <int>st == <int>Text:
- *         return SubType.Text             # <<<<<<<<<<<<<<
- *     if <int>st == <int>Number:
- *         return SubType.Number
- */
-    __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 61, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Text); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 61, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Stop); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 61, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_r = __pyx_t_2;
@@ -3235,71 +3384,77 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_subtype(xlfparser::Token:
     goto __pyx_L0;
 
     /* "xlfparser/_xlfparser.pyx":60
- *     elif <int>st == <int>Stop:
- *         return SubType.Stop
- *     elif <int>st == <int>Text:             # <<<<<<<<<<<<<<
- *         return SubType.Text
- *     if <int>st == <int>Number:
+ *     elif <int>st == <int>Start:
+ *         return Token.SubType.Start
+ *     elif <int>st == <int>Stop:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Stop
+ *     elif <int>st == <int>Text:
  */
   }
 
   /* "xlfparser/_xlfparser.pyx":62
+ *     elif <int>st == <int>Stop:
+ *         return Token.SubType.Stop
+ *     elif <int>st == <int>Text:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Text
+ *     if <int>st == <int>Number:
+ */
+  __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Text));
+  if (__pyx_t_1) {
+
+    /* "xlfparser/_xlfparser.pyx":63
+ *         return Token.SubType.Stop
  *     elif <int>st == <int>Text:
- *         return SubType.Text
+ *         return Token.SubType.Text             # <<<<<<<<<<<<<<
+ *     if <int>st == <int>Number:
+ *         return Token.SubType.Number
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 63, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 63, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Text); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 63, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_r = __pyx_t_2;
+    __pyx_t_2 = 0;
+    goto __pyx_L0;
+
+    /* "xlfparser/_xlfparser.pyx":62
+ *     elif <int>st == <int>Stop:
+ *         return Token.SubType.Stop
+ *     elif <int>st == <int>Text:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Text
+ *     if <int>st == <int>Number:
+ */
+  }
+
+  /* "xlfparser/_xlfparser.pyx":64
+ *     elif <int>st == <int>Text:
+ *         return Token.SubType.Text
  *     if <int>st == <int>Number:             # <<<<<<<<<<<<<<
- *         return SubType.Number
+ *         return Token.SubType.Number
  *     elif <int>st == <int>Logical:
  */
   __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Number));
   if (__pyx_t_1) {
 
-    /* "xlfparser/_xlfparser.pyx":63
- *         return SubType.Text
+    /* "xlfparser/_xlfparser.pyx":65
+ *         return Token.SubType.Text
  *     if <int>st == <int>Number:
- *         return SubType.Number             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Number             # <<<<<<<<<<<<<<
  *     elif <int>st == <int>Logical:
- *         return SubType.Logical
+ *         return Token.SubType.Logical
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 63, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 65, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Number); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 63, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 65, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_r = __pyx_t_3;
-    __pyx_t_3 = 0;
-    goto __pyx_L0;
-
-    /* "xlfparser/_xlfparser.pyx":62
- *     elif <int>st == <int>Text:
- *         return SubType.Text
- *     if <int>st == <int>Number:             # <<<<<<<<<<<<<<
- *         return SubType.Number
- *     elif <int>st == <int>Logical:
- */
-  }
-
-  /* "xlfparser/_xlfparser.pyx":64
- *     if <int>st == <int>Number:
- *         return SubType.Number
- *     elif <int>st == <int>Logical:             # <<<<<<<<<<<<<<
- *         return SubType.Logical
- *     elif <int>st == <int>Error:
- */
-  __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Logical));
-  if (__pyx_t_1) {
-
-    /* "xlfparser/_xlfparser.pyx":65
- *         return SubType.Number
- *     elif <int>st == <int>Logical:
- *         return SubType.Logical             # <<<<<<<<<<<<<<
- *     elif <int>st == <int>Error:
- *         return SubType.Error
- */
-    __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 65, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Logical); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 65, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Number); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 65, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_r = __pyx_t_2;
@@ -3307,71 +3462,77 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_subtype(xlfparser::Token:
     goto __pyx_L0;
 
     /* "xlfparser/_xlfparser.pyx":64
- *     if <int>st == <int>Number:
- *         return SubType.Number
- *     elif <int>st == <int>Logical:             # <<<<<<<<<<<<<<
- *         return SubType.Logical
- *     elif <int>st == <int>Error:
+ *     elif <int>st == <int>Text:
+ *         return Token.SubType.Text
+ *     if <int>st == <int>Number:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Number
+ *     elif <int>st == <int>Logical:
  */
   }
 
   /* "xlfparser/_xlfparser.pyx":66
+ *     if <int>st == <int>Number:
+ *         return Token.SubType.Number
+ *     elif <int>st == <int>Logical:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Logical
+ *     elif <int>st == <int>Error:
+ */
+  __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Logical));
+  if (__pyx_t_1) {
+
+    /* "xlfparser/_xlfparser.pyx":67
+ *         return Token.SubType.Number
  *     elif <int>st == <int>Logical:
- *         return SubType.Logical
+ *         return Token.SubType.Logical             # <<<<<<<<<<<<<<
+ *     elif <int>st == <int>Error:
+ *         return Token.SubType.Error
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 67, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 67, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Logical); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 67, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_r = __pyx_t_2;
+    __pyx_t_2 = 0;
+    goto __pyx_L0;
+
+    /* "xlfparser/_xlfparser.pyx":66
+ *     if <int>st == <int>Number:
+ *         return Token.SubType.Number
+ *     elif <int>st == <int>Logical:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Logical
+ *     elif <int>st == <int>Error:
+ */
+  }
+
+  /* "xlfparser/_xlfparser.pyx":68
+ *     elif <int>st == <int>Logical:
+ *         return Token.SubType.Logical
  *     elif <int>st == <int>Error:             # <<<<<<<<<<<<<<
- *         return SubType.Error
+ *         return Token.SubType.Error
  *     elif <int>st == <int>Range:
  */
   __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Error));
   if (__pyx_t_1) {
 
-    /* "xlfparser/_xlfparser.pyx":67
- *         return SubType.Logical
+    /* "xlfparser/_xlfparser.pyx":69
+ *         return Token.SubType.Logical
  *     elif <int>st == <int>Error:
- *         return SubType.Error             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Error             # <<<<<<<<<<<<<<
  *     elif <int>st == <int>Range:
- *         return SubType.Range
+ *         return Token.SubType.Range
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 67, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 69, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Error); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 67, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 69, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_r = __pyx_t_3;
-    __pyx_t_3 = 0;
-    goto __pyx_L0;
-
-    /* "xlfparser/_xlfparser.pyx":66
- *     elif <int>st == <int>Logical:
- *         return SubType.Logical
- *     elif <int>st == <int>Error:             # <<<<<<<<<<<<<<
- *         return SubType.Error
- *     elif <int>st == <int>Range:
- */
-  }
-
-  /* "xlfparser/_xlfparser.pyx":68
- *     elif <int>st == <int>Error:
- *         return SubType.Error
- *     elif <int>st == <int>Range:             # <<<<<<<<<<<<<<
- *         return SubType.Range
- *     if <int>st == <int>Math:
- */
-  __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Range));
-  if (__pyx_t_1) {
-
-    /* "xlfparser/_xlfparser.pyx":69
- *         return SubType.Error
- *     elif <int>st == <int>Range:
- *         return SubType.Range             # <<<<<<<<<<<<<<
- *     if <int>st == <int>Math:
- *         return SubType.Math
- */
-    __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 69, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Range); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 69, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Error); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 69, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_r = __pyx_t_2;
@@ -3379,71 +3540,77 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_subtype(xlfparser::Token:
     goto __pyx_L0;
 
     /* "xlfparser/_xlfparser.pyx":68
- *     elif <int>st == <int>Error:
- *         return SubType.Error
- *     elif <int>st == <int>Range:             # <<<<<<<<<<<<<<
- *         return SubType.Range
- *     if <int>st == <int>Math:
+ *     elif <int>st == <int>Logical:
+ *         return Token.SubType.Logical
+ *     elif <int>st == <int>Error:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Error
+ *     elif <int>st == <int>Range:
  */
   }
 
   /* "xlfparser/_xlfparser.pyx":70
+ *     elif <int>st == <int>Error:
+ *         return Token.SubType.Error
+ *     elif <int>st == <int>Range:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Range
+ *     if <int>st == <int>Math:
+ */
+  __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Range));
+  if (__pyx_t_1) {
+
+    /* "xlfparser/_xlfparser.pyx":71
+ *         return Token.SubType.Error
  *     elif <int>st == <int>Range:
- *         return SubType.Range
+ *         return Token.SubType.Range             # <<<<<<<<<<<<<<
+ *     if <int>st == <int>Math:
+ *         return Token.SubType.Math
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 71, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Range); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_r = __pyx_t_2;
+    __pyx_t_2 = 0;
+    goto __pyx_L0;
+
+    /* "xlfparser/_xlfparser.pyx":70
+ *     elif <int>st == <int>Error:
+ *         return Token.SubType.Error
+ *     elif <int>st == <int>Range:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Range
+ *     if <int>st == <int>Math:
+ */
+  }
+
+  /* "xlfparser/_xlfparser.pyx":72
+ *     elif <int>st == <int>Range:
+ *         return Token.SubType.Range
  *     if <int>st == <int>Math:             # <<<<<<<<<<<<<<
- *         return SubType.Math
+ *         return Token.SubType.Math
  *     elif <int>st == <int>Concatenation:
  */
   __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Math));
   if (__pyx_t_1) {
 
-    /* "xlfparser/_xlfparser.pyx":71
- *         return SubType.Range
+    /* "xlfparser/_xlfparser.pyx":73
+ *         return Token.SubType.Range
  *     if <int>st == <int>Math:
- *         return SubType.Math             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Math             # <<<<<<<<<<<<<<
  *     elif <int>st == <int>Concatenation:
- *         return SubType.Concatenation
+ *         return Token.SubType.Concatenation
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 73, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Math); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 71, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 73, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_r = __pyx_t_3;
-    __pyx_t_3 = 0;
-    goto __pyx_L0;
-
-    /* "xlfparser/_xlfparser.pyx":70
- *     elif <int>st == <int>Range:
- *         return SubType.Range
- *     if <int>st == <int>Math:             # <<<<<<<<<<<<<<
- *         return SubType.Math
- *     elif <int>st == <int>Concatenation:
- */
-  }
-
-  /* "xlfparser/_xlfparser.pyx":72
- *     if <int>st == <int>Math:
- *         return SubType.Math
- *     elif <int>st == <int>Concatenation:             # <<<<<<<<<<<<<<
- *         return SubType.Concatenation
- *     elif <int>st == <int>Intersection:
- */
-  __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Concatenation));
-  if (__pyx_t_1) {
-
-    /* "xlfparser/_xlfparser.pyx":73
- *         return SubType.Math
- *     elif <int>st == <int>Concatenation:
- *         return SubType.Concatenation             # <<<<<<<<<<<<<<
- *     elif <int>st == <int>Intersection:
- *         return SubType.Intersection
- */
-    __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 73, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Concatenation); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 73, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Math); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 73, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_r = __pyx_t_2;
@@ -3451,71 +3618,77 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_subtype(xlfparser::Token:
     goto __pyx_L0;
 
     /* "xlfparser/_xlfparser.pyx":72
- *     if <int>st == <int>Math:
- *         return SubType.Math
- *     elif <int>st == <int>Concatenation:             # <<<<<<<<<<<<<<
- *         return SubType.Concatenation
- *     elif <int>st == <int>Intersection:
+ *     elif <int>st == <int>Range:
+ *         return Token.SubType.Range
+ *     if <int>st == <int>Math:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Math
+ *     elif <int>st == <int>Concatenation:
  */
   }
 
   /* "xlfparser/_xlfparser.pyx":74
+ *     if <int>st == <int>Math:
+ *         return Token.SubType.Math
+ *     elif <int>st == <int>Concatenation:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Concatenation
+ *     elif <int>st == <int>Intersection:
+ */
+  __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Concatenation));
+  if (__pyx_t_1) {
+
+    /* "xlfparser/_xlfparser.pyx":75
+ *         return Token.SubType.Math
  *     elif <int>st == <int>Concatenation:
- *         return SubType.Concatenation
+ *         return Token.SubType.Concatenation             # <<<<<<<<<<<<<<
+ *     elif <int>st == <int>Intersection:
+ *         return Token.SubType.Intersection
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 75, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 75, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Concatenation); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 75, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_r = __pyx_t_2;
+    __pyx_t_2 = 0;
+    goto __pyx_L0;
+
+    /* "xlfparser/_xlfparser.pyx":74
+ *     if <int>st == <int>Math:
+ *         return Token.SubType.Math
+ *     elif <int>st == <int>Concatenation:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Concatenation
+ *     elif <int>st == <int>Intersection:
+ */
+  }
+
+  /* "xlfparser/_xlfparser.pyx":76
+ *     elif <int>st == <int>Concatenation:
+ *         return Token.SubType.Concatenation
  *     elif <int>st == <int>Intersection:             # <<<<<<<<<<<<<<
- *         return SubType.Intersection
+ *         return Token.SubType.Intersection
  *     elif <int>st == <int>Union:
  */
   __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Intersection));
   if (__pyx_t_1) {
 
-    /* "xlfparser/_xlfparser.pyx":75
- *         return SubType.Concatenation
+    /* "xlfparser/_xlfparser.pyx":77
+ *         return Token.SubType.Concatenation
  *     elif <int>st == <int>Intersection:
- *         return SubType.Intersection             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Intersection             # <<<<<<<<<<<<<<
  *     elif <int>st == <int>Union:
- *         return SubType.Union
+ *         return Token.SubType.Union
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 75, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 77, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_Intersection); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 75, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 77, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_r = __pyx_t_3;
-    __pyx_t_3 = 0;
-    goto __pyx_L0;
-
-    /* "xlfparser/_xlfparser.pyx":74
- *     elif <int>st == <int>Concatenation:
- *         return SubType.Concatenation
- *     elif <int>st == <int>Intersection:             # <<<<<<<<<<<<<<
- *         return SubType.Intersection
- *     elif <int>st == <int>Union:
- */
-  }
-
-  /* "xlfparser/_xlfparser.pyx":76
- *     elif <int>st == <int>Intersection:
- *         return SubType.Intersection
- *     elif <int>st == <int>Union:             # <<<<<<<<<<<<<<
- *         return SubType.Union
- *     raise ValueError("Unexpected token subtype")
- */
-  __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Union));
-  if (__pyx_t_1) {
-
-    /* "xlfparser/_xlfparser.pyx":77
- *         return SubType.Intersection
- *     elif <int>st == <int>Union:
- *         return SubType.Union             # <<<<<<<<<<<<<<
- *     raise ValueError("Unexpected token subtype")
- * 
- */
-    __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 77, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Union); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 77, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Intersection); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 77, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_r = __pyx_t_2;
@@ -3523,33 +3696,72 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_subtype(xlfparser::Token:
     goto __pyx_L0;
 
     /* "xlfparser/_xlfparser.pyx":76
- *     elif <int>st == <int>Intersection:
- *         return SubType.Intersection
- *     elif <int>st == <int>Union:             # <<<<<<<<<<<<<<
- *         return SubType.Union
- *     raise ValueError("Unexpected token subtype")
+ *     elif <int>st == <int>Concatenation:
+ *         return Token.SubType.Concatenation
+ *     elif <int>st == <int>Intersection:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Intersection
+ *     elif <int>st == <int>Union:
  */
   }
 
   /* "xlfparser/_xlfparser.pyx":78
+ *     elif <int>st == <int>Intersection:
+ *         return Token.SubType.Intersection
+ *     elif <int>st == <int>Union:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Union
+ *     raise ValueError("Unexpected token subtype")
+ */
+  __pyx_t_1 = (((int)__pyx_v_st) == ((int)xlfparser::Token::Subtype::Union));
+  if (__pyx_t_1) {
+
+    /* "xlfparser/_xlfparser.pyx":79
+ *         return Token.SubType.Intersection
  *     elif <int>st == <int>Union:
- *         return SubType.Union
+ *         return Token.SubType.Union             # <<<<<<<<<<<<<<
+ *     raise ValueError("Unexpected token subtype")
+ * 
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 79, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_SubType); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 79, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_Union); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 79, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_r = __pyx_t_2;
+    __pyx_t_2 = 0;
+    goto __pyx_L0;
+
+    /* "xlfparser/_xlfparser.pyx":78
+ *     elif <int>st == <int>Intersection:
+ *         return Token.SubType.Intersection
+ *     elif <int>st == <int>Union:             # <<<<<<<<<<<<<<
+ *         return Token.SubType.Union
+ *     raise ValueError("Unexpected token subtype")
+ */
+  }
+
+  /* "xlfparser/_xlfparser.pyx":80
+ *     elif <int>st == <int>Union:
+ *         return Token.SubType.Union
  *     raise ValueError("Unexpected token subtype")             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_2 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 78, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 80, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_Raise(__pyx_t_2, 0, 0, 0);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __PYX_ERR(0, 78, __pyx_L1_error)
+  __PYX_ERR(0, 80, __pyx_L1_error)
 
-  /* "xlfparser/_xlfparser.pyx":53
+  /* "xlfparser/_xlfparser.pyx":55
  * 
  * 
  * cdef object _from_subtype(_Subtype st):             # <<<<<<<<<<<<<<
  *     if <int>st == <int>_None:
- *         return SubType._None
+ *         return Token.SubType._None
  */
 
   /* function exit code */
@@ -3564,39 +3776,435 @@ static PyObject *__pyx_f_9xlfparser_10_xlfparser__from_subtype(xlfparser::Token:
   return __pyx_r;
 }
 
-/* "xlfparser/_xlfparser.pyx":81
+/* "xlfparser/_xlfparser.pyx":83
  * 
  * 
- * def tokenize(str formula):             # <<<<<<<<<<<<<<
- *     cdef _Options[wchar_t] options
+ * cdef wchar_t _get_option(options, key):             # <<<<<<<<<<<<<<
+ *     value = getattr(options, key)
+ *     if not isinstance(value, str) or len(value) != 1:
+ */
+
+static wchar_t __pyx_f_9xlfparser_10_xlfparser__get_option(PyObject *__pyx_v_options, PyObject *__pyx_v_key) {
+  PyObject *__pyx_v_value = NULL;
+  std::wstring __pyx_v_wvalue;
+  wchar_t __pyx_r;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_t_2;
+  int __pyx_t_3;
+  int __pyx_t_4;
+  Py_ssize_t __pyx_t_5;
+  Py_UCS4 __pyx_t_6;
+  PyObject *__pyx_t_7 = NULL;
+  std::wstring __pyx_t_8;
+  wchar_t const *__pyx_t_9;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("_get_option", 1);
+
+  /* "xlfparser/_xlfparser.pyx":84
+ * 
+ * cdef wchar_t _get_option(options, key):
+ *     value = getattr(options, key)             # <<<<<<<<<<<<<<
+ *     if not isinstance(value, str) or len(value) != 1:
+ *         raise ValueError("Unexpected value '%s' for '%s'" % (value, key))
+ */
+  __pyx_t_1 = __Pyx_GetAttr(__pyx_v_options, __pyx_v_key); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 84, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_value = __pyx_t_1;
+  __pyx_t_1 = 0;
+
+  /* "xlfparser/_xlfparser.pyx":85
+ * cdef wchar_t _get_option(options, key):
+ *     value = getattr(options, key)
+ *     if not isinstance(value, str) or len(value) != 1:             # <<<<<<<<<<<<<<
+ *         raise ValueError("Unexpected value '%s' for '%s'" % (value, key))
+ *     cdef wstring wvalue = _to_wstring(value)
+ */
+  __pyx_t_3 = PyUnicode_Check(__pyx_v_value); 
+  __pyx_t_4 = (!__pyx_t_3);
+  if (!__pyx_t_4) {
+  } else {
+    __pyx_t_2 = __pyx_t_4;
+    goto __pyx_L4_bool_binop_done;
+  }
+  __pyx_t_5 = PyObject_Length(__pyx_v_value); if (unlikely(__pyx_t_5 == ((Py_ssize_t)-1))) __PYX_ERR(0, 85, __pyx_L1_error)
+  __pyx_t_4 = (__pyx_t_5 != 1);
+  __pyx_t_2 = __pyx_t_4;
+  __pyx_L4_bool_binop_done:;
+  if (unlikely(__pyx_t_2)) {
+
+    /* "xlfparser/_xlfparser.pyx":86
+ *     value = getattr(options, key)
+ *     if not isinstance(value, str) or len(value) != 1:
+ *         raise ValueError("Unexpected value '%s' for '%s'" % (value, key))             # <<<<<<<<<<<<<<
+ *     cdef wstring wvalue = _to_wstring(value)
+ *     return dereference(wvalue.c_str())
+ */
+    __pyx_t_1 = PyTuple_New(5); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 86, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __pyx_t_5 = 0;
+    __pyx_t_6 = 127;
+    __Pyx_INCREF(__pyx_kp_u_Unexpected_value);
+    __pyx_t_5 += 18;
+    __Pyx_GIVEREF(__pyx_kp_u_Unexpected_value);
+    PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_kp_u_Unexpected_value);
+    __pyx_t_7 = __Pyx_PyObject_FormatSimpleAndDecref(PyObject_Unicode(__pyx_v_value), __pyx_empty_unicode); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 86, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_7);
+    __pyx_t_6 = (__Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_7) > __pyx_t_6) ? __Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_7) : __pyx_t_6;
+    __pyx_t_5 += __Pyx_PyUnicode_GET_LENGTH(__pyx_t_7);
+    __Pyx_GIVEREF(__pyx_t_7);
+    PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_t_7);
+    __pyx_t_7 = 0;
+    __Pyx_INCREF(__pyx_kp_u_for);
+    __pyx_t_5 += 7;
+    __Pyx_GIVEREF(__pyx_kp_u_for);
+    PyTuple_SET_ITEM(__pyx_t_1, 2, __pyx_kp_u_for);
+    __pyx_t_7 = __Pyx_PyObject_FormatSimpleAndDecref(PyObject_Unicode(__pyx_v_key), __pyx_empty_unicode); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 86, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_7);
+    __pyx_t_6 = (__Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_7) > __pyx_t_6) ? __Pyx_PyUnicode_MAX_CHAR_VALUE(__pyx_t_7) : __pyx_t_6;
+    __pyx_t_5 += __Pyx_PyUnicode_GET_LENGTH(__pyx_t_7);
+    __Pyx_GIVEREF(__pyx_t_7);
+    PyTuple_SET_ITEM(__pyx_t_1, 3, __pyx_t_7);
+    __pyx_t_7 = 0;
+    __Pyx_INCREF(__pyx_kp_u__3);
+    __pyx_t_5 += 1;
+    __Pyx_GIVEREF(__pyx_kp_u__3);
+    PyTuple_SET_ITEM(__pyx_t_1, 4, __pyx_kp_u__3);
+    __pyx_t_7 = __Pyx_PyUnicode_Join(__pyx_t_1, 5, __pyx_t_5, __pyx_t_6); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 86, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_7);
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_builtin_ValueError, __pyx_t_7); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 86, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+    __Pyx_Raise(__pyx_t_1, 0, 0, 0);
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __PYX_ERR(0, 86, __pyx_L1_error)
+
+    /* "xlfparser/_xlfparser.pyx":85
+ * cdef wchar_t _get_option(options, key):
+ *     value = getattr(options, key)
+ *     if not isinstance(value, str) or len(value) != 1:             # <<<<<<<<<<<<<<
+ *         raise ValueError("Unexpected value '%s' for '%s'" % (value, key))
+ *     cdef wstring wvalue = _to_wstring(value)
+ */
+  }
+
+  /* "xlfparser/_xlfparser.pyx":87
+ *     if not isinstance(value, str) or len(value) != 1:
+ *         raise ValueError("Unexpected value '%s' for '%s'" % (value, key))
+ *     cdef wstring wvalue = _to_wstring(value)             # <<<<<<<<<<<<<<
+ *     return dereference(wvalue.c_str())
+ * 
+ */
+  __pyx_t_8 = __pyx_f_9xlfparser_10_xlfparser__to_wstring(__pyx_v_value); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 87, __pyx_L1_error)
+  __pyx_v_wvalue = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_8);
+
+  /* "xlfparser/_xlfparser.pyx":88
+ *         raise ValueError("Unexpected value '%s' for '%s'" % (value, key))
+ *     cdef wstring wvalue = _to_wstring(value)
+ *     return dereference(wvalue.c_str())             # <<<<<<<<<<<<<<
+ * 
+ * 
+ */
+  try {
+    __pyx_t_9 = __pyx_v_wvalue.c_str();
+  } catch(...) {
+    __Pyx_CppExn2PyErr();
+    __PYX_ERR(0, 88, __pyx_L1_error)
+  }
+  __pyx_r = (*__pyx_t_9);
+  goto __pyx_L0;
+
+  /* "xlfparser/_xlfparser.pyx":83
+ * 
+ * 
+ * cdef wchar_t _get_option(options, key):             # <<<<<<<<<<<<<<
+ *     value = getattr(options, key)
+ *     if not isinstance(value, str) or len(value) != 1:
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_AddTraceback("xlfparser._xlfparser._get_option", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = -1;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_value);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "xlfparser/_xlfparser.pyx":91
+ * 
+ * 
+ * cdef _Options[wchar_t] _to_options(object kwargs):             # <<<<<<<<<<<<<<
+ *     cdef _Options[wchar_t] coptions
+ *     options = Options.from_kwargs(**kwargs)
+ */
+
+static xlfparser::Options<wchar_t>  __pyx_f_9xlfparser_10_xlfparser__to_options(PyObject *__pyx_v_kwargs) {
+  xlfparser::Options<wchar_t>  __pyx_v_coptions;
+  PyObject *__pyx_v_options = NULL;
+  xlfparser::Options<wchar_t>  __pyx_r;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  wchar_t __pyx_t_4;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("_to_options", 1);
+
+  /* "xlfparser/_xlfparser.pyx":93
+ * cdef _Options[wchar_t] _to_options(object kwargs):
+ *     cdef _Options[wchar_t] coptions
+ *     options = Options.from_kwargs(**kwargs)             # <<<<<<<<<<<<<<
+ *     coptions.left_brace = _get_option(options, "left_brace")
+ *     coptions.right_brace = _get_option(options, "right_brace")
+ */
+  __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_n_s_Options); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 93, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_from_kwargs); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 93, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  if (unlikely(__pyx_v_kwargs == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "argument after ** must be a mapping, not NoneType");
+    __PYX_ERR(0, 93, __pyx_L1_error)
+  }
+  if (likely(PyDict_CheckExact(__pyx_v_kwargs))) {
+    __pyx_t_1 = PyDict_Copy(__pyx_v_kwargs); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 93, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+  } else {
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg((PyObject*)&PyDict_Type, __pyx_v_kwargs); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 93, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+  }
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_empty_tuple, __pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 93, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_v_options = __pyx_t_3;
+  __pyx_t_3 = 0;
+
+  /* "xlfparser/_xlfparser.pyx":94
+ *     cdef _Options[wchar_t] coptions
+ *     options = Options.from_kwargs(**kwargs)
+ *     coptions.left_brace = _get_option(options, "left_brace")             # <<<<<<<<<<<<<<
+ *     coptions.right_brace = _get_option(options, "right_brace")
+ *     coptions.left_bracket = _get_option(options, "left_bracket")
+ */
+  __pyx_t_4 = __pyx_f_9xlfparser_10_xlfparser__get_option(__pyx_v_options, __pyx_n_u_left_brace); if (unlikely(__pyx_t_4 == ((wchar_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 94, __pyx_L1_error)
+  __pyx_v_coptions.left_brace = ((std::optional<wchar_t> )__pyx_t_4);
+
+  /* "xlfparser/_xlfparser.pyx":95
+ *     options = Options.from_kwargs(**kwargs)
+ *     coptions.left_brace = _get_option(options, "left_brace")
+ *     coptions.right_brace = _get_option(options, "right_brace")             # <<<<<<<<<<<<<<
+ *     coptions.left_bracket = _get_option(options, "left_bracket")
+ *     coptions.right_bracket = _get_option(options, "right_bracket")
+ */
+  __pyx_t_4 = __pyx_f_9xlfparser_10_xlfparser__get_option(__pyx_v_options, __pyx_n_u_right_brace); if (unlikely(__pyx_t_4 == ((wchar_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 95, __pyx_L1_error)
+  __pyx_v_coptions.right_brace = ((std::optional<wchar_t> )__pyx_t_4);
+
+  /* "xlfparser/_xlfparser.pyx":96
+ *     coptions.left_brace = _get_option(options, "left_brace")
+ *     coptions.right_brace = _get_option(options, "right_brace")
+ *     coptions.left_bracket = _get_option(options, "left_bracket")             # <<<<<<<<<<<<<<
+ *     coptions.right_bracket = _get_option(options, "right_bracket")
+ *     coptions.list_separator = _get_option(options, "list_separator")
+ */
+  __pyx_t_4 = __pyx_f_9xlfparser_10_xlfparser__get_option(__pyx_v_options, __pyx_n_u_left_bracket); if (unlikely(__pyx_t_4 == ((wchar_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 96, __pyx_L1_error)
+  __pyx_v_coptions.left_bracket = ((std::optional<wchar_t> )__pyx_t_4);
+
+  /* "xlfparser/_xlfparser.pyx":97
+ *     coptions.right_brace = _get_option(options, "right_brace")
+ *     coptions.left_bracket = _get_option(options, "left_bracket")
+ *     coptions.right_bracket = _get_option(options, "right_bracket")             # <<<<<<<<<<<<<<
+ *     coptions.list_separator = _get_option(options, "list_separator")
+ *     coptions.decimal_separator = _get_option(options, "decimal_separator")
+ */
+  __pyx_t_4 = __pyx_f_9xlfparser_10_xlfparser__get_option(__pyx_v_options, __pyx_n_u_right_bracket); if (unlikely(__pyx_t_4 == ((wchar_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 97, __pyx_L1_error)
+  __pyx_v_coptions.right_bracket = ((std::optional<wchar_t> )__pyx_t_4);
+
+  /* "xlfparser/_xlfparser.pyx":98
+ *     coptions.left_bracket = _get_option(options, "left_bracket")
+ *     coptions.right_bracket = _get_option(options, "right_bracket")
+ *     coptions.list_separator = _get_option(options, "list_separator")             # <<<<<<<<<<<<<<
+ *     coptions.decimal_separator = _get_option(options, "decimal_separator")
+ *     coptions.row_separator = _get_option(options, "row_separator")
+ */
+  __pyx_t_4 = __pyx_f_9xlfparser_10_xlfparser__get_option(__pyx_v_options, __pyx_n_u_list_separator); if (unlikely(__pyx_t_4 == ((wchar_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 98, __pyx_L1_error)
+  __pyx_v_coptions.list_separator = ((std::optional<wchar_t> )__pyx_t_4);
+
+  /* "xlfparser/_xlfparser.pyx":99
+ *     coptions.right_bracket = _get_option(options, "right_bracket")
+ *     coptions.list_separator = _get_option(options, "list_separator")
+ *     coptions.decimal_separator = _get_option(options, "decimal_separator")             # <<<<<<<<<<<<<<
+ *     coptions.row_separator = _get_option(options, "row_separator")
+ *     return coptions
+ */
+  __pyx_t_4 = __pyx_f_9xlfparser_10_xlfparser__get_option(__pyx_v_options, __pyx_n_u_decimal_separator); if (unlikely(__pyx_t_4 == ((wchar_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 99, __pyx_L1_error)
+  __pyx_v_coptions.decimal_separator = ((std::optional<wchar_t> )__pyx_t_4);
+
+  /* "xlfparser/_xlfparser.pyx":100
+ *     coptions.list_separator = _get_option(options, "list_separator")
+ *     coptions.decimal_separator = _get_option(options, "decimal_separator")
+ *     coptions.row_separator = _get_option(options, "row_separator")             # <<<<<<<<<<<<<<
+ *     return coptions
+ * 
+ */
+  __pyx_t_4 = __pyx_f_9xlfparser_10_xlfparser__get_option(__pyx_v_options, __pyx_n_u_row_separator); if (unlikely(__pyx_t_4 == ((wchar_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 100, __pyx_L1_error)
+  __pyx_v_coptions.row_separator = ((std::optional<wchar_t> )__pyx_t_4);
+
+  /* "xlfparser/_xlfparser.pyx":101
+ *     coptions.decimal_separator = _get_option(options, "decimal_separator")
+ *     coptions.row_separator = _get_option(options, "row_separator")
+ *     return coptions             # <<<<<<<<<<<<<<
+ * 
+ * 
+ */
+  __pyx_r = __pyx_v_coptions;
+  goto __pyx_L0;
+
+  /* "xlfparser/_xlfparser.pyx":91
+ * 
+ * 
+ * cdef _Options[wchar_t] _to_options(object kwargs):             # <<<<<<<<<<<<<<
+ *     cdef _Options[wchar_t] coptions
+ *     options = Options.from_kwargs(**kwargs)
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_AddTraceback("xlfparser._xlfparser._to_options", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_pretend_to_initialize(&__pyx_r);
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_options);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "xlfparser/_xlfparser.pyx":104
+ * 
+ * 
+ * def tokenize(str formula, **kwargs: OptionsKwargs):             # <<<<<<<<<<<<<<
+ *     cdef _Options[wchar_t] options = _to_options(kwargs)
  *     cdef wstring wformula = _to_wstring(formula)
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_9xlfparser_10_xlfparser_1tokenize(PyObject *__pyx_self, PyObject *__pyx_v_formula); /*proto*/
-static PyMethodDef __pyx_mdef_9xlfparser_10_xlfparser_1tokenize = {"tokenize", (PyCFunction)__pyx_pw_9xlfparser_10_xlfparser_1tokenize, METH_O, 0};
-static PyObject *__pyx_pw_9xlfparser_10_xlfparser_1tokenize(PyObject *__pyx_self, PyObject *__pyx_v_formula) {
+static PyObject *__pyx_pw_9xlfparser_10_xlfparser_1tokenize(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+); /*proto*/
+static PyMethodDef __pyx_mdef_9xlfparser_10_xlfparser_1tokenize = {"tokenize", (PyCFunction)(void*)(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_9xlfparser_10_xlfparser_1tokenize, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
+static PyObject *__pyx_pw_9xlfparser_10_xlfparser_1tokenize(PyObject *__pyx_self, 
+#if CYTHON_METH_FASTCALL
+PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
+#else
+PyObject *__pyx_args, PyObject *__pyx_kwds
+#endif
+) {
+  PyObject *__pyx_v_formula = 0;
+  PyObject *__pyx_v_kwargs = 0;
+  #if !CYTHON_METH_FASTCALL
+  CYTHON_UNUSED Py_ssize_t __pyx_nargs;
+  #endif
   CYTHON_UNUSED PyObject *const *__pyx_kwvalues;
+  PyObject* values[1] = {0};
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("tokenize (wrapper)", 0);
-  __pyx_kwvalues = __Pyx_KwValues_VARARGS(__pyx_args, __pyx_nargs);
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_formula), (&PyUnicode_Type), 1, "formula", 1))) __PYX_ERR(0, 81, __pyx_L1_error)
-  __pyx_r = __pyx_pf_9xlfparser_10_xlfparser_tokenize(__pyx_self, ((PyObject*)__pyx_v_formula));
+  #if !CYTHON_METH_FASTCALL
+  #if CYTHON_ASSUME_SAFE_MACROS
+  __pyx_nargs = PyTuple_GET_SIZE(__pyx_args);
+  #else
+  __pyx_nargs = PyTuple_Size(__pyx_args); if (unlikely(__pyx_nargs < 0)) return NULL;
+  #endif
+  #endif
+  __pyx_kwvalues = __Pyx_KwValues_FASTCALL(__pyx_args, __pyx_nargs);
+  __pyx_v_kwargs = PyDict_New(); if (unlikely(!__pyx_v_kwargs)) return NULL;
+  __Pyx_GOTREF(__pyx_v_kwargs);
+  {
+    PyObject **__pyx_pyargnames[] = {&__pyx_n_s_formula,0};
+    if (__pyx_kwds) {
+      Py_ssize_t kw_args;
+      switch (__pyx_nargs) {
+        case  1: values[0] = __Pyx_Arg_FASTCALL(__pyx_args, 0);
+        CYTHON_FALLTHROUGH;
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      kw_args = __Pyx_NumKwargs_FASTCALL(__pyx_kwds);
+      switch (__pyx_nargs) {
+        case  0:
+        if (likely((values[0] = __Pyx_GetKwValue_FASTCALL(__pyx_kwds, __pyx_kwvalues, __pyx_n_s_formula)) != 0)) {
+          (void)__Pyx_Arg_NewRef_FASTCALL(values[0]);
+          kw_args--;
+        }
+        else if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 104, __pyx_L3_error)
+        else goto __pyx_L5_argtuple_error;
+      }
+      if (unlikely(kw_args > 0)) {
+        const Py_ssize_t kwd_pos_args = __pyx_nargs;
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, __pyx_v_kwargs, values + 0, kwd_pos_args, "tokenize") < 0)) __PYX_ERR(0, 104, __pyx_L3_error)
+      }
+    } else if (unlikely(__pyx_nargs != 1)) {
+      goto __pyx_L5_argtuple_error;
+    } else {
+      values[0] = __Pyx_Arg_FASTCALL(__pyx_args, 0);
+    }
+    __pyx_v_formula = ((PyObject*)values[0]);
+  }
+  goto __pyx_L6_skip;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("tokenize", 1, 1, 1, __pyx_nargs); __PYX_ERR(0, 104, __pyx_L3_error)
+  __pyx_L6_skip:;
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L3_error:;
+  {
+    Py_ssize_t __pyx_temp;
+    for (__pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+      __Pyx_Arg_XDECREF_FASTCALL(values[__pyx_temp]);
+    }
+  }
+  __Pyx_DECREF(__pyx_v_kwargs); __pyx_v_kwargs = 0;
+  __Pyx_AddTraceback("xlfparser._xlfparser.tokenize", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_formula), (&PyUnicode_Type), 1, "formula", 1))) __PYX_ERR(0, 104, __pyx_L1_error)
+  __pyx_r = __pyx_pf_9xlfparser_10_xlfparser_tokenize(__pyx_self, __pyx_v_formula, __pyx_v_kwargs);
 
   /* function exit code */
   goto __pyx_L0;
   __pyx_L1_error:;
   __pyx_r = NULL;
   __pyx_L0:;
+  __Pyx_DECREF(__pyx_v_kwargs);
+  {
+    Py_ssize_t __pyx_temp;
+    for (__pyx_temp=0; __pyx_temp < (Py_ssize_t)(sizeof(values)/sizeof(values[0])); ++__pyx_temp) {
+      __Pyx_Arg_XDECREF_FASTCALL(values[__pyx_temp]);
+    }
+  }
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_9xlfparser_10_xlfparser_tokenize(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_formula) {
+static PyObject *__pyx_pf_9xlfparser_10_xlfparser_tokenize(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_formula, PyObject *__pyx_v_kwargs) {
   xlfparser::Options<wchar_t>  __pyx_v_options;
   std::wstring __pyx_v_wformula;
   std::vector<xlfparser::Token>  __pyx_v_tokens;
@@ -3607,70 +4215,81 @@ static PyObject *__pyx_pf_9xlfparser_10_xlfparser_tokenize(CYTHON_UNUSED PyObjec
   std::vector<xlfparser::Token> ::size_type __pyx_v_i;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
-  std::wstring __pyx_t_1;
-  std::vector<xlfparser::Token>  __pyx_t_2;
-  PyObject *__pyx_t_3 = NULL;
-  std::vector<xlfparser::Token> ::size_type __pyx_t_4;
+  xlfparser::Options<wchar_t>  __pyx_t_1;
+  std::wstring __pyx_t_2;
+  std::vector<xlfparser::Token>  __pyx_t_3;
+  PyObject *__pyx_t_4 = NULL;
   std::vector<xlfparser::Token> ::size_type __pyx_t_5;
   std::vector<xlfparser::Token> ::size_type __pyx_t_6;
-  PyObject *__pyx_t_7 = NULL;
+  std::vector<xlfparser::Token> ::size_type __pyx_t_7;
   PyObject *__pyx_t_8 = NULL;
-  int __pyx_t_9;
+  PyObject *__pyx_t_9 = NULL;
+  int __pyx_t_10;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("tokenize", 1);
 
-  /* "xlfparser/_xlfparser.pyx":83
- * def tokenize(str formula):
- *     cdef _Options[wchar_t] options
+  /* "xlfparser/_xlfparser.pyx":105
+ * 
+ * def tokenize(str formula, **kwargs: OptionsKwargs):
+ *     cdef _Options[wchar_t] options = _to_options(kwargs)             # <<<<<<<<<<<<<<
+ *     cdef wstring wformula = _to_wstring(formula)
+ *     cdef vector[_Token] tokens = _tokenize(wformula, options)
+ */
+  __pyx_t_1 = __pyx_f_9xlfparser_10_xlfparser__to_options(__pyx_v_kwargs); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 105, __pyx_L1_error)
+  __pyx_v_options = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_1);
+
+  /* "xlfparser/_xlfparser.pyx":106
+ * def tokenize(str formula, **kwargs: OptionsKwargs):
+ *     cdef _Options[wchar_t] options = _to_options(kwargs)
  *     cdef wstring wformula = _to_wstring(formula)             # <<<<<<<<<<<<<<
  *     cdef vector[_Token] tokens = _tokenize(wformula, options)
  * 
  */
-  __pyx_t_1 = __pyx_f_9xlfparser_10_xlfparser__to_wstring(__pyx_v_formula); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 83, __pyx_L1_error)
-  __pyx_v_wformula = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_1);
+  __pyx_t_2 = __pyx_f_9xlfparser_10_xlfparser__to_wstring(__pyx_v_formula); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 106, __pyx_L1_error)
+  __pyx_v_wformula = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_2);
 
-  /* "xlfparser/_xlfparser.pyx":84
- *     cdef _Options[wchar_t] options
+  /* "xlfparser/_xlfparser.pyx":107
+ *     cdef _Options[wchar_t] options = _to_options(kwargs)
  *     cdef wstring wformula = _to_wstring(formula)
  *     cdef vector[_Token] tokens = _tokenize(wformula, options)             # <<<<<<<<<<<<<<
  * 
  *     cdef wstring value
  */
   try {
-    __pyx_t_2 = xlfparser::tokenize(__pyx_v_wformula, __pyx_v_options);
+    __pyx_t_3 = xlfparser::tokenize(__pyx_v_wformula, __pyx_v_options);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(0, 84, __pyx_L1_error)
+    __PYX_ERR(0, 107, __pyx_L1_error)
   }
-  __pyx_v_tokens = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_2);
+  __pyx_v_tokens = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_3);
 
-  /* "xlfparser/_xlfparser.pyx":90
+  /* "xlfparser/_xlfparser.pyx":113
  *     cdef _Subtype sub_type
  * 
  *     result = []             # <<<<<<<<<<<<<<
  *     for i in range(tokens.size()):
  *         value = tokens[i].value(wformula)
  */
-  __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 90, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_3);
-  __pyx_v_result = ((PyObject*)__pyx_t_3);
-  __pyx_t_3 = 0;
+  __pyx_t_4 = PyList_New(0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 113, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_v_result = ((PyObject*)__pyx_t_4);
+  __pyx_t_4 = 0;
 
-  /* "xlfparser/_xlfparser.pyx":91
+  /* "xlfparser/_xlfparser.pyx":114
  * 
  *     result = []
  *     for i in range(tokens.size()):             # <<<<<<<<<<<<<<
  *         value = tokens[i].value(wformula)
  *         type = tokens[i].type()
  */
-  __pyx_t_4 = __pyx_v_tokens.size();
-  __pyx_t_5 = __pyx_t_4;
-  for (__pyx_t_6 = 0; __pyx_t_6 < __pyx_t_5; __pyx_t_6+=1) {
-    __pyx_v_i = __pyx_t_6;
+  __pyx_t_5 = __pyx_v_tokens.size();
+  __pyx_t_6 = __pyx_t_5;
+  for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_6; __pyx_t_7+=1) {
+    __pyx_v_i = __pyx_t_7;
 
-    /* "xlfparser/_xlfparser.pyx":92
+    /* "xlfparser/_xlfparser.pyx":115
  *     result = []
  *     for i in range(tokens.size()):
  *         value = tokens[i].value(wformula)             # <<<<<<<<<<<<<<
@@ -3678,14 +4297,14 @@ static PyObject *__pyx_pf_9xlfparser_10_xlfparser_tokenize(CYTHON_UNUSED PyObjec
  *         sub_type = tokens[i].subtype()
  */
     try {
-      __pyx_t_1 = (__pyx_v_tokens[__pyx_v_i]).value(__pyx_v_wformula);
+      __pyx_t_2 = (__pyx_v_tokens[__pyx_v_i]).value(__pyx_v_wformula);
     } catch(...) {
       __Pyx_CppExn2PyErr();
-      __PYX_ERR(0, 92, __pyx_L1_error)
+      __PYX_ERR(0, 115, __pyx_L1_error)
     }
-    __pyx_v_value = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_1);
+    __pyx_v_value = __PYX_STD_MOVE_IF_SUPPORTED(__pyx_t_2);
 
-    /* "xlfparser/_xlfparser.pyx":93
+    /* "xlfparser/_xlfparser.pyx":116
  *     for i in range(tokens.size()):
  *         value = tokens[i].value(wformula)
  *         type = tokens[i].type()             # <<<<<<<<<<<<<<
@@ -3694,7 +4313,7 @@ static PyObject *__pyx_pf_9xlfparser_10_xlfparser_tokenize(CYTHON_UNUSED PyObjec
  */
     __pyx_v_type = (__pyx_v_tokens[__pyx_v_i]).type();
 
-    /* "xlfparser/_xlfparser.pyx":94
+    /* "xlfparser/_xlfparser.pyx":117
  *         value = tokens[i].value(wformula)
  *         type = tokens[i].type()
  *         sub_type = tokens[i].subtype()             # <<<<<<<<<<<<<<
@@ -3703,70 +4322,70 @@ static PyObject *__pyx_pf_9xlfparser_10_xlfparser_tokenize(CYTHON_UNUSED PyObjec
  */
     __pyx_v_sub_type = (__pyx_v_tokens[__pyx_v_i]).subtype();
 
-    /* "xlfparser/_xlfparser.pyx":96
+    /* "xlfparser/_xlfparser.pyx":119
  *         sub_type = tokens[i].subtype()
  * 
  *         result.append(Token(             # <<<<<<<<<<<<<<
  *             value=_from_wstring(value),
  *             type=_from_type(type),
  */
-    __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_Token); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 96, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_n_s_Token); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 119, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_4);
 
-    /* "xlfparser/_xlfparser.pyx":97
+    /* "xlfparser/_xlfparser.pyx":120
  * 
  *         result.append(Token(
  *             value=_from_wstring(value),             # <<<<<<<<<<<<<<
  *             type=_from_type(type),
  *             sub_type=_from_subtype(sub_type)
  */
-    __pyx_t_7 = __Pyx_PyDict_NewPresized(3); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 97, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_7);
-    __pyx_t_8 = __pyx_f_9xlfparser_10_xlfparser__from_wstring(__pyx_v_value); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 97, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_PyDict_NewPresized(3); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 120, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
-    if (PyDict_SetItem(__pyx_t_7, __pyx_n_s_value, __pyx_t_8) < 0) __PYX_ERR(0, 97, __pyx_L1_error)
-    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __pyx_t_9 = __pyx_f_9xlfparser_10_xlfparser__from_wstring(__pyx_v_value); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 120, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_9);
+    if (PyDict_SetItem(__pyx_t_8, __pyx_n_s_value, __pyx_t_9) < 0) __PYX_ERR(0, 120, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-    /* "xlfparser/_xlfparser.pyx":98
+    /* "xlfparser/_xlfparser.pyx":121
  *         result.append(Token(
  *             value=_from_wstring(value),
  *             type=_from_type(type),             # <<<<<<<<<<<<<<
  *             sub_type=_from_subtype(sub_type)
  *         ))
  */
-    __pyx_t_8 = __pyx_f_9xlfparser_10_xlfparser__from_type(__pyx_v_type); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 98, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_8);
-    if (PyDict_SetItem(__pyx_t_7, __pyx_n_s_type, __pyx_t_8) < 0) __PYX_ERR(0, 97, __pyx_L1_error)
-    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __pyx_t_9 = __pyx_f_9xlfparser_10_xlfparser__from_type(__pyx_v_type); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 121, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_9);
+    if (PyDict_SetItem(__pyx_t_8, __pyx_n_s_type, __pyx_t_9) < 0) __PYX_ERR(0, 120, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-    /* "xlfparser/_xlfparser.pyx":99
+    /* "xlfparser/_xlfparser.pyx":122
  *             value=_from_wstring(value),
  *             type=_from_type(type),
  *             sub_type=_from_subtype(sub_type)             # <<<<<<<<<<<<<<
  *         ))
  * 
  */
-    __pyx_t_8 = __pyx_f_9xlfparser_10_xlfparser__from_subtype(__pyx_v_sub_type); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 99, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_8);
-    if (PyDict_SetItem(__pyx_t_7, __pyx_n_s_sub_type, __pyx_t_8) < 0) __PYX_ERR(0, 97, __pyx_L1_error)
-    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __pyx_t_9 = __pyx_f_9xlfparser_10_xlfparser__from_subtype(__pyx_v_sub_type); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 122, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_9);
+    if (PyDict_SetItem(__pyx_t_8, __pyx_n_s_sub_type, __pyx_t_9) < 0) __PYX_ERR(0, 120, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-    /* "xlfparser/_xlfparser.pyx":96
+    /* "xlfparser/_xlfparser.pyx":119
  *         sub_type = tokens[i].subtype()
  * 
  *         result.append(Token(             # <<<<<<<<<<<<<<
  *             value=_from_wstring(value),
  *             type=_from_type(type),
  */
-    __pyx_t_8 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_empty_tuple, __pyx_t_7); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 96, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_8);
-    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-    __pyx_t_9 = __Pyx_PyList_Append(__pyx_v_result, __pyx_t_8); if (unlikely(__pyx_t_9 == ((int)-1))) __PYX_ERR(0, 96, __pyx_L1_error)
+    __pyx_t_9 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_empty_tuple, __pyx_t_8); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 119, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_9);
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __pyx_t_10 = __Pyx_PyList_Append(__pyx_v_result, __pyx_t_9); if (unlikely(__pyx_t_10 == ((int)-1))) __PYX_ERR(0, 119, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
   }
 
-  /* "xlfparser/_xlfparser.pyx":102
+  /* "xlfparser/_xlfparser.pyx":125
  *         ))
  * 
  *     return result             # <<<<<<<<<<<<<<
@@ -3776,19 +4395,19 @@ static PyObject *__pyx_pf_9xlfparser_10_xlfparser_tokenize(CYTHON_UNUSED PyObjec
   __pyx_r = __pyx_v_result;
   goto __pyx_L0;
 
-  /* "xlfparser/_xlfparser.pyx":81
+  /* "xlfparser/_xlfparser.pyx":104
  * 
  * 
- * def tokenize(str formula):             # <<<<<<<<<<<<<<
- *     cdef _Options[wchar_t] options
+ * def tokenize(str formula, **kwargs: OptionsKwargs):             # <<<<<<<<<<<<<<
+ *     cdef _Options[wchar_t] options = _to_options(kwargs)
  *     cdef wstring wformula = _to_wstring(formula)
  */
 
   /* function exit code */
   __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_3);
-  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_XDECREF(__pyx_t_9);
   __Pyx_AddTraceback("xlfparser._xlfparser.tokenize", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
@@ -3829,6 +4448,8 @@ static int __Pyx_CreateStringTabAndInitStrings(void) {
     {&__pyx_n_s_OperatorInfix, __pyx_k_OperatorInfix, sizeof(__pyx_k_OperatorInfix), 0, 0, 1, 1},
     {&__pyx_n_s_OperatorPostfix, __pyx_k_OperatorPostfix, sizeof(__pyx_k_OperatorPostfix), 0, 0, 1, 1},
     {&__pyx_n_s_OperatorPrefix, __pyx_k_OperatorPrefix, sizeof(__pyx_k_OperatorPrefix), 0, 0, 1, 1},
+    {&__pyx_n_s_Options, __pyx_k_Options, sizeof(__pyx_k_Options), 0, 0, 1, 1},
+    {&__pyx_n_s_OptionsKwargs, __pyx_k_OptionsKwargs, sizeof(__pyx_k_OptionsKwargs), 0, 0, 1, 1},
     {&__pyx_n_s_Range, __pyx_k_Range, sizeof(__pyx_k_Range), 0, 0, 1, 1},
     {&__pyx_n_s_Start, __pyx_k_Start, sizeof(__pyx_k_Start), 0, 0, 1, 1},
     {&__pyx_n_s_Stop, __pyx_k_Stop, sizeof(__pyx_k_Stop), 0, 0, 1, 1},
@@ -3839,29 +4460,41 @@ static int __Pyx_CreateStringTabAndInitStrings(void) {
     {&__pyx_n_s_Type, __pyx_k_Type, sizeof(__pyx_k_Type), 0, 0, 1, 1},
     {&__pyx_kp_u_Unexpected_token_subtype, __pyx_k_Unexpected_token_subtype, sizeof(__pyx_k_Unexpected_token_subtype), 0, 1, 0, 0},
     {&__pyx_kp_u_Unexpected_token_type, __pyx_k_Unexpected_token_type, sizeof(__pyx_k_Unexpected_token_type), 0, 1, 0, 0},
+    {&__pyx_kp_u_Unexpected_value, __pyx_k_Unexpected_value, sizeof(__pyx_k_Unexpected_value), 0, 1, 0, 0},
     {&__pyx_n_s_Union, __pyx_k_Union, sizeof(__pyx_k_Union), 0, 0, 1, 1},
     {&__pyx_n_s_Unknown, __pyx_k_Unknown, sizeof(__pyx_k_Unknown), 0, 0, 1, 1},
     {&__pyx_n_s_ValueError, __pyx_k_ValueError, sizeof(__pyx_k_ValueError), 0, 0, 1, 1},
     {&__pyx_n_s_Whitespace, __pyx_k_Whitespace, sizeof(__pyx_k_Whitespace), 0, 0, 1, 1},
     {&__pyx_kp_u__3, __pyx_k__3, sizeof(__pyx_k__3), 0, 1, 0, 0},
-    {&__pyx_n_s__6, __pyx_k__6, sizeof(__pyx_k__6), 0, 0, 1, 1},
+    {&__pyx_kp_u__4, __pyx_k__4, sizeof(__pyx_k__4), 0, 1, 0, 0},
+    {&__pyx_n_s__7, __pyx_k__7, sizeof(__pyx_k__7), 0, 0, 1, 1},
     {&__pyx_n_s_asyncio_coroutines, __pyx_k_asyncio_coroutines, sizeof(__pyx_k_asyncio_coroutines), 0, 0, 1, 1},
     {&__pyx_n_s_cline_in_traceback, __pyx_k_cline_in_traceback, sizeof(__pyx_k_cline_in_traceback), 0, 0, 1, 1},
+    {&__pyx_n_u_decimal_separator, __pyx_k_decimal_separator, sizeof(__pyx_k_decimal_separator), 0, 1, 0, 1},
+    {&__pyx_kp_u_for, __pyx_k_for, sizeof(__pyx_k_for), 0, 1, 0, 0},
     {&__pyx_n_s_formula, __pyx_k_formula, sizeof(__pyx_k_formula), 0, 0, 1, 1},
+    {&__pyx_n_s_from_kwargs, __pyx_k_from_kwargs, sizeof(__pyx_k_from_kwargs), 0, 0, 1, 1},
     {&__pyx_n_s_i, __pyx_k_i, sizeof(__pyx_k_i), 0, 0, 1, 1},
     {&__pyx_n_s_import, __pyx_k_import, sizeof(__pyx_k_import), 0, 0, 1, 1},
     {&__pyx_n_s_is_coroutine, __pyx_k_is_coroutine, sizeof(__pyx_k_is_coroutine), 0, 0, 1, 1},
+    {&__pyx_n_s_kwargs, __pyx_k_kwargs, sizeof(__pyx_k_kwargs), 0, 0, 1, 1},
+    {&__pyx_n_u_left_brace, __pyx_k_left_brace, sizeof(__pyx_k_left_brace), 0, 1, 0, 1},
+    {&__pyx_n_u_left_bracket, __pyx_k_left_bracket, sizeof(__pyx_k_left_bracket), 0, 1, 0, 1},
+    {&__pyx_n_u_list_separator, __pyx_k_list_separator, sizeof(__pyx_k_list_separator), 0, 1, 0, 1},
     {&__pyx_n_s_main, __pyx_k_main, sizeof(__pyx_k_main), 0, 0, 1, 1},
     {&__pyx_n_s_name, __pyx_k_name, sizeof(__pyx_k_name), 0, 0, 1, 1},
     {&__pyx_n_s_options, __pyx_k_options, sizeof(__pyx_k_options), 0, 0, 1, 1},
     {&__pyx_n_s_range, __pyx_k_range, sizeof(__pyx_k_range), 0, 0, 1, 1},
     {&__pyx_n_s_result, __pyx_k_result, sizeof(__pyx_k_result), 0, 0, 1, 1},
+    {&__pyx_n_u_right_brace, __pyx_k_right_brace, sizeof(__pyx_k_right_brace), 0, 1, 0, 1},
+    {&__pyx_n_u_right_bracket, __pyx_k_right_bracket, sizeof(__pyx_k_right_bracket), 0, 1, 0, 1},
+    {&__pyx_n_u_row_separator, __pyx_k_row_separator, sizeof(__pyx_k_row_separator), 0, 1, 0, 1},
     {&__pyx_n_s_sub_type, __pyx_k_sub_type, sizeof(__pyx_k_sub_type), 0, 0, 1, 1},
     {&__pyx_n_s_test, __pyx_k_test, sizeof(__pyx_k_test), 0, 0, 1, 1},
+    {&__pyx_n_s_token, __pyx_k_token, sizeof(__pyx_k_token), 0, 0, 1, 1},
     {&__pyx_n_s_tokenize, __pyx_k_tokenize, sizeof(__pyx_k_tokenize), 0, 0, 1, 1},
     {&__pyx_n_s_tokens, __pyx_k_tokens, sizeof(__pyx_k_tokens), 0, 0, 1, 1},
     {&__pyx_n_s_type, __pyx_k_type, sizeof(__pyx_k_type), 0, 0, 1, 1},
-    {&__pyx_n_s_types, __pyx_k_types, sizeof(__pyx_k_types), 0, 0, 1, 1},
     {&__pyx_n_s_value, __pyx_k_value, sizeof(__pyx_k_value), 0, 0, 1, 1},
     {&__pyx_n_s_wformula, __pyx_k_wformula, sizeof(__pyx_k_wformula), 0, 0, 1, 1},
     {&__pyx_n_s_xlfparser__xlfparser, __pyx_k_xlfparser__xlfparser, sizeof(__pyx_k_xlfparser__xlfparser), 0, 0, 1, 1},
@@ -3872,8 +4505,8 @@ static int __Pyx_CreateStringTabAndInitStrings(void) {
 }
 /* #### Code section: cached_builtins ### */
 static CYTHON_SMALL_CODE int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) __PYX_ERR(0, 50, __pyx_L1_error)
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 91, __pyx_L1_error)
+  __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) __PYX_ERR(0, 52, __pyx_L1_error)
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 114, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
   return -1;
@@ -3884,39 +4517,39 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "xlfparser/_xlfparser.pyx":50
+  /* "xlfparser/_xlfparser.pyx":52
  *     elif <int>t == <int>Whitespace:
- *         return Type.Whitespace
+ *         return Token.Type.Whitespace
  *     raise ValueError("Unexpected token type")             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_tuple_ = PyTuple_Pack(1, __pyx_kp_u_Unexpected_token_type); if (unlikely(!__pyx_tuple_)) __PYX_ERR(0, 50, __pyx_L1_error)
+  __pyx_tuple_ = PyTuple_Pack(1, __pyx_kp_u_Unexpected_token_type); if (unlikely(!__pyx_tuple_)) __PYX_ERR(0, 52, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple_);
   __Pyx_GIVEREF(__pyx_tuple_);
 
-  /* "xlfparser/_xlfparser.pyx":78
+  /* "xlfparser/_xlfparser.pyx":80
  *     elif <int>st == <int>Union:
- *         return SubType.Union
+ *         return Token.SubType.Union
  *     raise ValueError("Unexpected token subtype")             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_tuple__2 = PyTuple_Pack(1, __pyx_kp_u_Unexpected_token_subtype); if (unlikely(!__pyx_tuple__2)) __PYX_ERR(0, 78, __pyx_L1_error)
+  __pyx_tuple__2 = PyTuple_Pack(1, __pyx_kp_u_Unexpected_token_subtype); if (unlikely(!__pyx_tuple__2)) __PYX_ERR(0, 80, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__2);
   __Pyx_GIVEREF(__pyx_tuple__2);
 
-  /* "xlfparser/_xlfparser.pyx":81
+  /* "xlfparser/_xlfparser.pyx":104
  * 
  * 
- * def tokenize(str formula):             # <<<<<<<<<<<<<<
- *     cdef _Options[wchar_t] options
+ * def tokenize(str formula, **kwargs: OptionsKwargs):             # <<<<<<<<<<<<<<
+ *     cdef _Options[wchar_t] options = _to_options(kwargs)
  *     cdef wstring wformula = _to_wstring(formula)
  */
-  __pyx_tuple__4 = PyTuple_Pack(9, __pyx_n_s_formula, __pyx_n_s_options, __pyx_n_s_wformula, __pyx_n_s_tokens, __pyx_n_s_value, __pyx_n_s_type, __pyx_n_s_sub_type, __pyx_n_s_result, __pyx_n_s_i); if (unlikely(!__pyx_tuple__4)) __PYX_ERR(0, 81, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_tuple__4);
-  __Pyx_GIVEREF(__pyx_tuple__4);
-  __pyx_codeobj__5 = (PyObject*)__Pyx_PyCode_New(1, 0, 0, 9, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__4, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_xlfparser__xlfparser_pyx, __pyx_n_s_tokenize, 81, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__5)) __PYX_ERR(0, 81, __pyx_L1_error)
+  __pyx_tuple__5 = PyTuple_Pack(10, __pyx_n_s_formula, __pyx_n_s_kwargs, __pyx_n_s_options, __pyx_n_s_wformula, __pyx_n_s_tokens, __pyx_n_s_value, __pyx_n_s_type, __pyx_n_s_sub_type, __pyx_n_s_result, __pyx_n_s_i); if (unlikely(!__pyx_tuple__5)) __PYX_ERR(0, 104, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_tuple__5);
+  __Pyx_GIVEREF(__pyx_tuple__5);
+  __pyx_codeobj__6 = (PyObject*)__Pyx_PyCode_New(1, 0, 0, 10, 0, CO_OPTIMIZED|CO_NEWLOCALS|CO_VARKEYWORDS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__5, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_xlfparser__xlfparser_pyx, __pyx_n_s_tokenize, 104, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__6)) __PYX_ERR(0, 104, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -4286,48 +4919,67 @@ if (!__Pyx_RefNanny) {
   /* "xlfparser/_xlfparser.pyx":4
  * 
  * from ._xlfparser cimport _Token, _Type, _Subtype, _Options, _tokenize
- * from .types import Token, Type, SubType             # <<<<<<<<<<<<<<
+ * from .token import Token             # <<<<<<<<<<<<<<
+ * from .options import OptionsKwargs, Options
  * 
- * from libc.stddef cimport wchar_t
  */
-  __pyx_t_2 = PyList_New(3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 4, __pyx_L1_error)
+  __pyx_t_2 = PyList_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 4, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_INCREF(__pyx_n_s_Token);
   __Pyx_GIVEREF(__pyx_n_s_Token);
   if (__Pyx_PyList_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_Token)) __PYX_ERR(0, 4, __pyx_L1_error);
-  __Pyx_INCREF(__pyx_n_s_Type);
-  __Pyx_GIVEREF(__pyx_n_s_Type);
-  if (__Pyx_PyList_SET_ITEM(__pyx_t_2, 1, __pyx_n_s_Type)) __PYX_ERR(0, 4, __pyx_L1_error);
-  __Pyx_INCREF(__pyx_n_s_SubType);
-  __Pyx_GIVEREF(__pyx_n_s_SubType);
-  if (__Pyx_PyList_SET_ITEM(__pyx_t_2, 2, __pyx_n_s_SubType)) __PYX_ERR(0, 4, __pyx_L1_error);
-  __pyx_t_3 = __Pyx_Import(__pyx_n_s_types, __pyx_t_2, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 4, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_Import(__pyx_n_s_token, __pyx_t_2, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 4, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_Token); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 4, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_Token, __pyx_t_2) < 0) __PYX_ERR(0, 4, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_Type); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 4, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_Type, __pyx_t_2) < 0) __PYX_ERR(0, 4, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_SubType); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 4, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_SubType, __pyx_t_2) < 0) __PYX_ERR(0, 4, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "xlfparser/_xlfparser.pyx":81
+  /* "xlfparser/_xlfparser.pyx":5
+ * from ._xlfparser cimport _Token, _Type, _Subtype, _Options, _tokenize
+ * from .token import Token
+ * from .options import OptionsKwargs, Options             # <<<<<<<<<<<<<<
+ * 
+ * from cython.operator import dereference
+ */
+  __pyx_t_3 = PyList_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 5, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_INCREF(__pyx_n_s_OptionsKwargs);
+  __Pyx_GIVEREF(__pyx_n_s_OptionsKwargs);
+  if (__Pyx_PyList_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_OptionsKwargs)) __PYX_ERR(0, 5, __pyx_L1_error);
+  __Pyx_INCREF(__pyx_n_s_Options);
+  __Pyx_GIVEREF(__pyx_n_s_Options);
+  if (__Pyx_PyList_SET_ITEM(__pyx_t_3, 1, __pyx_n_s_Options)) __PYX_ERR(0, 5, __pyx_L1_error);
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_options, __pyx_t_3, 1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 5, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_OptionsKwargs); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 5, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_OptionsKwargs, __pyx_t_3) < 0) __PYX_ERR(0, 5, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_Options); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 5, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_3);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_Options, __pyx_t_3) < 0) __PYX_ERR(0, 5, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+  /* "xlfparser/_xlfparser.pyx":104
  * 
  * 
- * def tokenize(str formula):             # <<<<<<<<<<<<<<
- *     cdef _Options[wchar_t] options
+ * def tokenize(str formula, **kwargs: OptionsKwargs):             # <<<<<<<<<<<<<<
+ *     cdef _Options[wchar_t] options = _to_options(kwargs)
  *     cdef wstring wformula = _to_wstring(formula)
  */
-  __pyx_t_3 = __Pyx_CyFunction_New(&__pyx_mdef_9xlfparser_10_xlfparser_1tokenize, 0, __pyx_n_s_tokenize, NULL, __pyx_n_s_xlfparser__xlfparser, __pyx_d, ((PyObject *)__pyx_codeobj__5)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 81, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 104, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  if (PyDict_SetItem(__pyx_t_2, __pyx_n_s_kwargs, __pyx_n_s_OptionsKwargs) < 0) __PYX_ERR(0, 104, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_CyFunction_New(&__pyx_mdef_9xlfparser_10_xlfparser_1tokenize, 0, __pyx_n_s_tokenize, NULL, __pyx_n_s_xlfparser__xlfparser, __pyx_d, ((PyObject *)__pyx_codeobj__6)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 104, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_tokenize, __pyx_t_3) < 0) __PYX_ERR(0, 81, __pyx_L1_error)
+  __Pyx_CyFunction_SetAnnotationsDict(__pyx_t_3, __pyx_t_2);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_tokenize, __pyx_t_3) < 0) __PYX_ERR(0, 104, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
   /* "xlfparser/_xlfparser.pyx":1
@@ -4811,6 +5463,328 @@ bad:
 }
 #endif
 
+/* GetAttr */
+static CYTHON_INLINE PyObject *__Pyx_GetAttr(PyObject *o, PyObject *n) {
+#if CYTHON_USE_TYPE_SLOTS
+#if PY_MAJOR_VERSION >= 3
+    if (likely(PyUnicode_Check(n)))
+#else
+    if (likely(PyString_Check(n)))
+#endif
+        return __Pyx_PyObject_GetAttrStr(o, n);
+#endif
+    return PyObject_GetAttr(o, n);
+}
+
+/* PyObjectFormatAndDecref */
+static CYTHON_INLINE PyObject* __Pyx_PyObject_FormatSimpleAndDecref(PyObject* s, PyObject* f) {
+    if (unlikely(!s)) return NULL;
+    if (likely(PyUnicode_CheckExact(s))) return s;
+    #if PY_MAJOR_VERSION < 3
+    if (likely(PyString_CheckExact(s))) {
+        PyObject *result = PyUnicode_FromEncodedObject(s, NULL, "strict");
+        Py_DECREF(s);
+        return result;
+    }
+    #endif
+    return __Pyx_PyObject_FormatAndDecref(s, f);
+}
+static CYTHON_INLINE PyObject* __Pyx_PyObject_FormatAndDecref(PyObject* s, PyObject* f) {
+    PyObject *result = PyObject_Format(s, f);
+    Py_DECREF(s);
+    return result;
+}
+
+/* JoinPyUnicode */
+static PyObject* __Pyx_PyUnicode_Join(PyObject* value_tuple, Py_ssize_t value_count, Py_ssize_t result_ulength,
+                                      Py_UCS4 max_char) {
+#if CYTHON_USE_UNICODE_INTERNALS && CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+    PyObject *result_uval;
+    int result_ukind, kind_shift;
+    Py_ssize_t i, char_pos;
+    void *result_udata;
+    CYTHON_MAYBE_UNUSED_VAR(max_char);
+#if CYTHON_PEP393_ENABLED
+    result_uval = PyUnicode_New(result_ulength, max_char);
+    if (unlikely(!result_uval)) return NULL;
+    result_ukind = (max_char <= 255) ? PyUnicode_1BYTE_KIND : (max_char <= 65535) ? PyUnicode_2BYTE_KIND : PyUnicode_4BYTE_KIND;
+    kind_shift = (result_ukind == PyUnicode_4BYTE_KIND) ? 2 : result_ukind - 1;
+    result_udata = PyUnicode_DATA(result_uval);
+#else
+    result_uval = PyUnicode_FromUnicode(NULL, result_ulength);
+    if (unlikely(!result_uval)) return NULL;
+    result_ukind = sizeof(Py_UNICODE);
+    kind_shift = (result_ukind == 4) ? 2 : result_ukind - 1;
+    result_udata = PyUnicode_AS_UNICODE(result_uval);
+#endif
+    assert(kind_shift == 2 || kind_shift == 1 || kind_shift == 0);
+    char_pos = 0;
+    for (i=0; i < value_count; i++) {
+        int ukind;
+        Py_ssize_t ulength;
+        void *udata;
+        PyObject *uval = PyTuple_GET_ITEM(value_tuple, i);
+        if (unlikely(__Pyx_PyUnicode_READY(uval)))
+            goto bad;
+        ulength = __Pyx_PyUnicode_GET_LENGTH(uval);
+        if (unlikely(!ulength))
+            continue;
+        if (unlikely((PY_SSIZE_T_MAX >> kind_shift) - ulength < char_pos))
+            goto overflow;
+        ukind = __Pyx_PyUnicode_KIND(uval);
+        udata = __Pyx_PyUnicode_DATA(uval);
+        if (!CYTHON_PEP393_ENABLED || ukind == result_ukind) {
+            memcpy((char *)result_udata + (char_pos << kind_shift), udata, (size_t) (ulength << kind_shift));
+        } else {
+            #if PY_VERSION_HEX >= 0x030D0000
+            if (unlikely(PyUnicode_CopyCharacters(result_uval, char_pos, uval, 0, ulength) < 0)) goto bad;
+            #elif CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030300F0 || defined(_PyUnicode_FastCopyCharacters)
+            _PyUnicode_FastCopyCharacters(result_uval, char_pos, uval, 0, ulength);
+            #else
+            Py_ssize_t j;
+            for (j=0; j < ulength; j++) {
+                Py_UCS4 uchar = __Pyx_PyUnicode_READ(ukind, udata, j);
+                __Pyx_PyUnicode_WRITE(result_ukind, result_udata, char_pos+j, uchar);
+            }
+            #endif
+        }
+        char_pos += ulength;
+    }
+    return result_uval;
+overflow:
+    PyErr_SetString(PyExc_OverflowError, "join() result is too long for a Python string");
+bad:
+    Py_DECREF(result_uval);
+    return NULL;
+#else
+    CYTHON_UNUSED_VAR(max_char);
+    CYTHON_UNUSED_VAR(result_ulength);
+    CYTHON_UNUSED_VAR(value_count);
+    return PyUnicode_Join(__pyx_empty_unicode, value_tuple);
+#endif
+}
+
+/* PyFunctionFastCall */
+#if CYTHON_FAST_PYCALL && !CYTHON_VECTORCALL
+static PyObject* __Pyx_PyFunction_FastCallNoKw(PyCodeObject *co, PyObject **args, Py_ssize_t na,
+                                               PyObject *globals) {
+    PyFrameObject *f;
+    PyThreadState *tstate = __Pyx_PyThreadState_Current;
+    PyObject **fastlocals;
+    Py_ssize_t i;
+    PyObject *result;
+    assert(globals != NULL);
+    /* XXX Perhaps we should create a specialized
+       PyFrame_New() that doesn't take locals, but does
+       take builtins without sanity checking them.
+       */
+    assert(tstate != NULL);
+    f = PyFrame_New(tstate, co, globals, NULL);
+    if (f == NULL) {
+        return NULL;
+    }
+    fastlocals = __Pyx_PyFrame_GetLocalsplus(f);
+    for (i = 0; i < na; i++) {
+        Py_INCREF(*args);
+        fastlocals[i] = *args++;
+    }
+    result = PyEval_EvalFrameEx(f,0);
+    ++tstate->recursion_depth;
+    Py_DECREF(f);
+    --tstate->recursion_depth;
+    return result;
+}
+static PyObject *__Pyx_PyFunction_FastCallDict(PyObject *func, PyObject **args, Py_ssize_t nargs, PyObject *kwargs) {
+    PyCodeObject *co = (PyCodeObject *)PyFunction_GET_CODE(func);
+    PyObject *globals = PyFunction_GET_GLOBALS(func);
+    PyObject *argdefs = PyFunction_GET_DEFAULTS(func);
+    PyObject *closure;
+#if PY_MAJOR_VERSION >= 3
+    PyObject *kwdefs;
+#endif
+    PyObject *kwtuple, **k;
+    PyObject **d;
+    Py_ssize_t nd;
+    Py_ssize_t nk;
+    PyObject *result;
+    assert(kwargs == NULL || PyDict_Check(kwargs));
+    nk = kwargs ? PyDict_Size(kwargs) : 0;
+    if (unlikely(Py_EnterRecursiveCall((char*)" while calling a Python object"))) {
+        return NULL;
+    }
+    if (
+#if PY_MAJOR_VERSION >= 3
+            co->co_kwonlyargcount == 0 &&
+#endif
+            likely(kwargs == NULL || nk == 0) &&
+            co->co_flags == (CO_OPTIMIZED | CO_NEWLOCALS | CO_NOFREE)) {
+        if (argdefs == NULL && co->co_argcount == nargs) {
+            result = __Pyx_PyFunction_FastCallNoKw(co, args, nargs, globals);
+            goto done;
+        }
+        else if (nargs == 0 && argdefs != NULL
+                 && co->co_argcount == Py_SIZE(argdefs)) {
+            /* function called with no arguments, but all parameters have
+               a default value: use default values as arguments .*/
+            args = &PyTuple_GET_ITEM(argdefs, 0);
+            result =__Pyx_PyFunction_FastCallNoKw(co, args, Py_SIZE(argdefs), globals);
+            goto done;
+        }
+    }
+    if (kwargs != NULL) {
+        Py_ssize_t pos, i;
+        kwtuple = PyTuple_New(2 * nk);
+        if (kwtuple == NULL) {
+            result = NULL;
+            goto done;
+        }
+        k = &PyTuple_GET_ITEM(kwtuple, 0);
+        pos = i = 0;
+        while (PyDict_Next(kwargs, &pos, &k[i], &k[i+1])) {
+            Py_INCREF(k[i]);
+            Py_INCREF(k[i+1]);
+            i += 2;
+        }
+        nk = i / 2;
+    }
+    else {
+        kwtuple = NULL;
+        k = NULL;
+    }
+    closure = PyFunction_GET_CLOSURE(func);
+#if PY_MAJOR_VERSION >= 3
+    kwdefs = PyFunction_GET_KW_DEFAULTS(func);
+#endif
+    if (argdefs != NULL) {
+        d = &PyTuple_GET_ITEM(argdefs, 0);
+        nd = Py_SIZE(argdefs);
+    }
+    else {
+        d = NULL;
+        nd = 0;
+    }
+#if PY_MAJOR_VERSION >= 3
+    result = PyEval_EvalCodeEx((PyObject*)co, globals, (PyObject *)NULL,
+                               args, (int)nargs,
+                               k, (int)nk,
+                               d, (int)nd, kwdefs, closure);
+#else
+    result = PyEval_EvalCodeEx(co, globals, (PyObject *)NULL,
+                               args, (int)nargs,
+                               k, (int)nk,
+                               d, (int)nd, closure);
+#endif
+    Py_XDECREF(kwtuple);
+done:
+    Py_LeaveRecursiveCall();
+    return result;
+}
+#endif
+
+/* PyObjectCallMethO */
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallMethO(PyObject *func, PyObject *arg) {
+    PyObject *self, *result;
+    PyCFunction cfunc;
+    cfunc = __Pyx_CyOrPyCFunction_GET_FUNCTION(func);
+    self = __Pyx_CyOrPyCFunction_GET_SELF(func);
+    if (unlikely(Py_EnterRecursiveCall((char*)" while calling a Python object")))
+        return NULL;
+    result = cfunc(self, arg);
+    Py_LeaveRecursiveCall();
+    if (unlikely(!result) && unlikely(!PyErr_Occurred())) {
+        PyErr_SetString(
+            PyExc_SystemError,
+            "NULL result without error in PyObject_Call");
+    }
+    return result;
+}
+#endif
+
+/* PyObjectFastCall */
+#if PY_VERSION_HEX < 0x03090000 || CYTHON_COMPILING_IN_LIMITED_API
+static PyObject* __Pyx_PyObject_FastCall_fallback(PyObject *func, PyObject **args, size_t nargs, PyObject *kwargs) {
+    PyObject *argstuple;
+    PyObject *result = 0;
+    size_t i;
+    argstuple = PyTuple_New((Py_ssize_t)nargs);
+    if (unlikely(!argstuple)) return NULL;
+    for (i = 0; i < nargs; i++) {
+        Py_INCREF(args[i]);
+        if (__Pyx_PyTuple_SET_ITEM(argstuple, (Py_ssize_t)i, args[i]) < 0) goto bad;
+    }
+    result = __Pyx_PyObject_Call(func, argstuple, kwargs);
+  bad:
+    Py_DECREF(argstuple);
+    return result;
+}
+#endif
+static CYTHON_INLINE PyObject* __Pyx_PyObject_FastCallDict(PyObject *func, PyObject **args, size_t _nargs, PyObject *kwargs) {
+    Py_ssize_t nargs = __Pyx_PyVectorcall_NARGS(_nargs);
+#if CYTHON_COMPILING_IN_CPYTHON
+    if (nargs == 0 && kwargs == NULL) {
+        if (__Pyx_CyOrPyCFunction_Check(func) && likely( __Pyx_CyOrPyCFunction_GET_FLAGS(func) & METH_NOARGS))
+            return __Pyx_PyObject_CallMethO(func, NULL);
+    }
+    else if (nargs == 1 && kwargs == NULL) {
+        if (__Pyx_CyOrPyCFunction_Check(func) && likely( __Pyx_CyOrPyCFunction_GET_FLAGS(func) & METH_O))
+            return __Pyx_PyObject_CallMethO(func, args[0]);
+    }
+#endif
+    #if PY_VERSION_HEX < 0x030800B1
+    #if CYTHON_FAST_PYCCALL
+    if (PyCFunction_Check(func)) {
+        if (kwargs) {
+            return _PyCFunction_FastCallDict(func, args, nargs, kwargs);
+        } else {
+            return _PyCFunction_FastCallKeywords(func, args, nargs, NULL);
+        }
+    }
+    #if PY_VERSION_HEX >= 0x030700A1
+    if (!kwargs && __Pyx_IS_TYPE(func, &PyMethodDescr_Type)) {
+        return _PyMethodDescr_FastCallKeywords(func, args, nargs, NULL);
+    }
+    #endif
+    #endif
+    #if CYTHON_FAST_PYCALL
+    if (PyFunction_Check(func)) {
+        return __Pyx_PyFunction_FastCallDict(func, args, nargs, kwargs);
+    }
+    #endif
+    #endif
+    if (kwargs == NULL) {
+        #if CYTHON_VECTORCALL
+        #if Py_VERSION_HEX < 0x03090000
+        vectorcallfunc f = _PyVectorcall_Function(func);
+        #else
+        vectorcallfunc f = PyVectorcall_Function(func);
+        #endif
+        if (f) {
+            return f(func, args, (size_t)nargs, NULL);
+        }
+        #elif defined(__Pyx_CyFunction_USED) && CYTHON_BACKPORT_VECTORCALL
+        if (__Pyx_CyFunction_CheckExact(func)) {
+            __pyx_vectorcallfunc f = __Pyx_CyFunction_func_vectorcall(func);
+            if (f) return f(func, args, (size_t)nargs, NULL);
+        }
+        #endif
+    }
+    if (nargs == 0) {
+        return __Pyx_PyObject_Call(func, __pyx_empty_tuple, kwargs);
+    }
+    #if PY_VERSION_HEX >= 0x03090000 && !CYTHON_COMPILING_IN_LIMITED_API
+    return PyObject_VectorcallDict(func, args, (size_t)nargs, kwargs);
+    #else
+    return __Pyx_PyObject_FastCall_fallback(func, args, (size_t)nargs, kwargs);
+    #endif
+}
+
+/* PyObjectCallOneArg */
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObject *arg) {
+    PyObject *args[2] = {NULL, arg};
+    return __Pyx_PyObject_FastCall(func, args+1, 1 | __Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET);
+}
+
 /* TupleAndListFromArray */
 #if CYTHON_COMPILING_IN_CPYTHON
 static CYTHON_INLINE void __Pyx_copy_object_array(PyObject *const *CYTHON_RESTRICT src, PyObject** CYTHON_RESTRICT dest, Py_ssize_t length) {
@@ -5018,6 +5992,202 @@ static CYTHON_INLINE PyObject * __Pyx_GetKwValue_FASTCALL(PyObject *kwnames, PyO
 }
 #endif
 
+/* RaiseDoubleKeywords */
+static void __Pyx_RaiseDoubleKeywordsError(
+    const char* func_name,
+    PyObject* kw_name)
+{
+    PyErr_Format(PyExc_TypeError,
+        #if PY_MAJOR_VERSION >= 3
+        "%s() got multiple values for keyword argument '%U'", func_name, kw_name);
+        #else
+        "%s() got multiple values for keyword argument '%s'", func_name,
+        PyString_AsString(kw_name));
+        #endif
+}
+
+/* ParseKeywords */
+static int __Pyx_ParseOptionalKeywords(
+    PyObject *kwds,
+    PyObject *const *kwvalues,
+    PyObject **argnames[],
+    PyObject *kwds2,
+    PyObject *values[],
+    Py_ssize_t num_pos_args,
+    const char* function_name)
+{
+    PyObject *key = 0, *value = 0;
+    Py_ssize_t pos = 0;
+    PyObject*** name;
+    PyObject*** first_kw_arg = argnames + num_pos_args;
+    int kwds_is_tuple = CYTHON_METH_FASTCALL && likely(PyTuple_Check(kwds));
+    while (1) {
+        Py_XDECREF(key); key = NULL;
+        Py_XDECREF(value); value = NULL;
+        if (kwds_is_tuple) {
+            Py_ssize_t size;
+#if CYTHON_ASSUME_SAFE_MACROS
+            size = PyTuple_GET_SIZE(kwds);
+#else
+            size = PyTuple_Size(kwds);
+            if (size < 0) goto bad;
+#endif
+            if (pos >= size) break;
+#if CYTHON_AVOID_BORROWED_REFS
+            key = __Pyx_PySequence_ITEM(kwds, pos);
+            if (!key) goto bad;
+#elif CYTHON_ASSUME_SAFE_MACROS
+            key = PyTuple_GET_ITEM(kwds, pos);
+#else
+            key = PyTuple_GetItem(kwds, pos);
+            if (!key) goto bad;
+#endif
+            value = kwvalues[pos];
+            pos++;
+        }
+        else
+        {
+            if (!PyDict_Next(kwds, &pos, &key, &value)) break;
+#if CYTHON_AVOID_BORROWED_REFS
+            Py_INCREF(key);
+#endif
+        }
+        name = first_kw_arg;
+        while (*name && (**name != key)) name++;
+        if (*name) {
+            values[name-argnames] = value;
+#if CYTHON_AVOID_BORROWED_REFS
+            Py_INCREF(value); // transfer ownership of value to values
+            Py_DECREF(key);
+#endif
+            key = NULL;
+            value = NULL;
+            continue;
+        }
+#if !CYTHON_AVOID_BORROWED_REFS
+        Py_INCREF(key);
+#endif
+        Py_INCREF(value);
+        name = first_kw_arg;
+        #if PY_MAJOR_VERSION < 3
+        if (likely(PyString_Check(key))) {
+            while (*name) {
+                if ((CYTHON_COMPILING_IN_PYPY || PyString_GET_SIZE(**name) == PyString_GET_SIZE(key))
+                        && _PyString_Eq(**name, key)) {
+                    values[name-argnames] = value;
+#if CYTHON_AVOID_BORROWED_REFS
+                    value = NULL;  // ownership transferred to values
+#endif
+                    break;
+                }
+                name++;
+            }
+            if (*name) continue;
+            else {
+                PyObject*** argname = argnames;
+                while (argname != first_kw_arg) {
+                    if ((**argname == key) || (
+                            (CYTHON_COMPILING_IN_PYPY || PyString_GET_SIZE(**argname) == PyString_GET_SIZE(key))
+                             && _PyString_Eq(**argname, key))) {
+                        goto arg_passed_twice;
+                    }
+                    argname++;
+                }
+            }
+        } else
+        #endif
+        if (likely(PyUnicode_Check(key))) {
+            while (*name) {
+                int cmp = (
+                #if !CYTHON_COMPILING_IN_PYPY && PY_MAJOR_VERSION >= 3
+                    (__Pyx_PyUnicode_GET_LENGTH(**name) != __Pyx_PyUnicode_GET_LENGTH(key)) ? 1 :
+                #endif
+                    PyUnicode_Compare(**name, key)
+                );
+                if (cmp < 0 && unlikely(PyErr_Occurred())) goto bad;
+                if (cmp == 0) {
+                    values[name-argnames] = value;
+#if CYTHON_AVOID_BORROWED_REFS
+                    value = NULL; // ownership transferred to values
+#endif
+                    break;
+                }
+                name++;
+            }
+            if (*name) continue;
+            else {
+                PyObject*** argname = argnames;
+                while (argname != first_kw_arg) {
+                    int cmp = (**argname == key) ? 0 :
+                    #if !CYTHON_COMPILING_IN_PYPY && PY_MAJOR_VERSION >= 3
+                        (__Pyx_PyUnicode_GET_LENGTH(**argname) != __Pyx_PyUnicode_GET_LENGTH(key)) ? 1 :
+                    #endif
+                        PyUnicode_Compare(**argname, key);
+                    if (cmp < 0 && unlikely(PyErr_Occurred())) goto bad;
+                    if (cmp == 0) goto arg_passed_twice;
+                    argname++;
+                }
+            }
+        } else
+            goto invalid_keyword_type;
+        if (kwds2) {
+            if (unlikely(PyDict_SetItem(kwds2, key, value))) goto bad;
+        } else {
+            goto invalid_keyword;
+        }
+    }
+    Py_XDECREF(key);
+    Py_XDECREF(value);
+    return 0;
+arg_passed_twice:
+    __Pyx_RaiseDoubleKeywordsError(function_name, key);
+    goto bad;
+invalid_keyword_type:
+    PyErr_Format(PyExc_TypeError,
+        "%.200s() keywords must be strings", function_name);
+    goto bad;
+invalid_keyword:
+    #if PY_MAJOR_VERSION < 3
+    PyErr_Format(PyExc_TypeError,
+        "%.200s() got an unexpected keyword argument '%.200s'",
+        function_name, PyString_AsString(key));
+    #else
+    PyErr_Format(PyExc_TypeError,
+        "%s() got an unexpected keyword argument '%U'",
+        function_name, key);
+    #endif
+bad:
+    Py_XDECREF(key);
+    Py_XDECREF(value);
+    return -1;
+}
+
+/* RaiseArgTupleInvalid */
+static void __Pyx_RaiseArgtupleInvalid(
+    const char* func_name,
+    int exact,
+    Py_ssize_t num_min,
+    Py_ssize_t num_max,
+    Py_ssize_t num_found)
+{
+    Py_ssize_t num_expected;
+    const char *more_or_less;
+    if (num_found < num_min) {
+        num_expected = num_min;
+        more_or_less = "at least";
+    } else {
+        num_expected = num_max;
+        more_or_less = "at most";
+    }
+    if (exact) {
+        more_or_less = "exactly";
+    }
+    PyErr_Format(PyExc_TypeError,
+                 "%.200s() takes %.8s %" CYTHON_FORMAT_SSIZE_T "d positional argument%.1s (%" CYTHON_FORMAT_SSIZE_T "d given)",
+                 func_name, more_or_less, num_expected,
+                 (num_expected == 1) ? "" : "s", num_found);
+}
+
 /* ArgTypeTest */
 static int __Pyx__ArgTypeTest(PyObject *obj, PyTypeObject *type, const char *name, int exact)
 {
@@ -5116,7 +6286,7 @@ static PyObject* __Pyx_ImportFrom(PyObject* module, PyObject* name) {
         if (unlikely(!module_name_str)) { goto modbad; }
         module_name = PyUnicode_FromString(module_name_str);
         if (unlikely(!module_name)) { goto modbad; }
-        module_dot = PyUnicode_Concat(module_name, __pyx_kp_u__3);
+        module_dot = PyUnicode_Concat(module_name, __pyx_kp_u__4);
         if (unlikely(!module_dot)) { goto modbad; }
         full_name = PyUnicode_Concat(module_dot, name);
         if (unlikely(!full_name)) { goto modbad; }
@@ -7019,7 +8189,7 @@ __Pyx_PyType_GetName(PyTypeObject* tp)
     if (unlikely(name == NULL) || unlikely(!PyUnicode_Check(name))) {
         PyErr_Clear();
         Py_XDECREF(name);
-        name = __Pyx_NewRef(__pyx_n_s__6);
+        name = __Pyx_NewRef(__pyx_n_s__7);
     }
     return name;
 }
