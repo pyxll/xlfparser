@@ -1,0 +1,1 @@
+include xlfparser/*.pxd xlfparser/*.pyx include/*.h
