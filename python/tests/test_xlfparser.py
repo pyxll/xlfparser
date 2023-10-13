@@ -1,5 +1,5 @@
 import pytest
-from xlfparser import tokenize, stringify, build_ast, Token
+from xlfparser import tokenize, stringify, build_ast, Token, use_options
 
 
 def test_tokenize_formula():
@@ -112,3 +112,11 @@ def test_invalid_formulas():
     with pytest.raises(RuntimeError) as e:
         tokenize("=foo())")
     assert "Mismatched parentheses" in str(e)
+
+
+def test_with_options():
+    with use_options(list_separator=";"):
+        tokens = tokenize("=FUNC(1; 2; 3)")
+
+    with use_options(list_separator="|"):
+        assert stringify(tokens) == "=FUNC(1|2|3)"
