@@ -14,11 +14,21 @@ class Node:
         self.token = token
         self.children = list(children)
 
-    def to_string(self, separator=" ", **kwargs: OptionsKwargs):
+    def to_string(self, prefix="=", separator="", **kwargs: OptionsKwargs) -> str:
         options = Options.from_kwargs(**kwargs)
-        visitor = NodeToStringVisitor(separator, options)
+        visitor = NodeToStringVisitor(prefix, separator, options)
         visitor.visit(self)
         return visitor.value
+
+    def get_tokens(self, **kwargs: OptionsKwargs) -> list[Token]:
+        options = Options.from_kwargs(**kwargs)
+        visitor = NodeToTokensVisitor(options)
+        visitor.visit(self)
+        return visitor.tokens
+
+    @property
+    def tokens(self) -> list[Token]:
+        return self.get_tokens()
 
     def __str__(self):
         return self.to_string()
@@ -50,11 +60,9 @@ class NodeVisitor(metaclass=ABCMeta):
         else:
             raise ValueError(f"Unexpected token {node.token=}")
 
-    def visit_children(self, node: Node, separator=None):
-        for i, child in enumerate(node.children):
+    def visit_children(self, node: Node):
+        for child in node.children:
             self.visit(child)
-            if separator is not None and i+1 < len(node.children):
-                self.values.append(separator)
 
     @abstractmethod
     def visit_operand(self, node: Node):
@@ -92,14 +100,23 @@ class NodeVisitor(metaclass=ABCMeta):
 class NodeToStringVisitor(NodeVisitor):
     """Node visitor that produces a sequence of values for converting an AST back into a string."""
 
-    def __init__(self, separator: str, options: Options):
+    def __init__(self, prefix: str, separator: str, options: Options):
         self.values = []
+        self.prefix = prefix
         self.separator = separator
         self.options = options
 
     @property
     def value(self):
-        return self.separator.join(self.values)
+        if self.values:
+            return self.prefix + self.separator + self.separator.join(self.values)
+        return ""
+
+    def visit_children(self, node: Node, separator=None):
+        for i, child in enumerate(node.children):
+            self.visit(child)
+            if separator is not None and i+1 < len(node.children):
+                self.values.append(separator)
 
     def visit_operand(self, node: Node):
         self.values.append(node.token.value)
@@ -135,6 +152,98 @@ class NodeToStringVisitor(NodeVisitor):
     def visit_operatorpostfix(self, node: Node):
         self.visit_children(node)
         self.values.append(node.token.value)
+
+
+class NodeToTokensVisitor(NodeVisitor):
+    """Node visitor that reconstitutes a token stream from an ast"""
+
+    def __init__(self, options: Options):
+        self.tokens = []
+        self.stack = []
+        self.options = options
+
+    def visit(self, node):
+        super().visit(node)
+        self.maybe_add_list_separator()
+
+    def visit_children(self, node, start=None, end=None):
+        self.stack.append(node)
+        for child in node.children[start:end]:
+            self.visit(child)
+        self.stack.pop()
+
+        # If the node's a function remove the last separator token
+        if node.token and node.token.type == Token.Type.Function:
+            if self.tokens and self.tokens[-1].type == Token.Type.Argument:
+                self.tokens.pop()
+
+    def maybe_add_list_separator(self):
+        # If we're in a function add a list separator token
+        prev_token_type = self.stack[-1].token.type if self.stack and self.stack[-1].token else None
+        if prev_token_type == Token.Type.Function:
+            self.tokens.append(Token(value=self.options.list_separator,
+                                    type=Token.Type.Argument,
+                                    sub_type=Token.SubType._None))
+
+    def visit_operand(self, node: Node):
+        self.tokens.append(node.token)
+
+    def visit_function(self, node: Node):
+        self.tokens.append(Token(value=node.token.value,
+                                 type=Token.Type.Function,
+                                 sub_type=Token.SubType.Start))
+
+        self.visit_children(node)
+
+        self.tokens.append(Token(value=")",
+                                 type=Token.Type.Function,
+                                 sub_type=Token.SubType.Stop))
+
+    def visit_array(self, node: Node):
+        self.tokens.append(Token(value=self.options.left_brace,
+                                 type=Token.Type.Array,
+                                 sub_type=Token.SubType.Start))
+
+        self.visit_children(node)
+
+        self.tokens.append(Token(value=self.options.right_brace,
+                                 type=Token.Type.Array,
+                                 sub_type=Token.SubType.Stop))
+
+    def visit_arrayrow(self, node: Node):
+        self.tokens.append(Token(value="",
+                                 type=Token.Type.ArrayRow,
+                                 sub_type=Token.SubType.Start))
+
+        self.visit_children(node)
+
+        self.tokens.append(Token(value=self.options.row_separator,
+                                 type=Token.Type.ArrayRow,
+                                 sub_type=Token.SubType.Stop))
+
+    def visit_subexpression(self, node: Node):
+        self.tokens.append(Token(value="(",
+                                 type=Token.Type.Subexpression,
+                                 sub_type=Token.SubType.Start))
+
+        self.visit_children(node)
+
+        self.tokens.append(Token(value=")",
+                                 type=Token.Type.Subexpression,
+                                 sub_type=Token.SubType.Stop))
+
+    def visit_operatorprefix(self, node: Node):
+        self.tokens.append(node.token)
+        self.visit_children(node)
+
+    def visit_operatorinfix(self, node: Node):
+        self.visit_children(node, end=1)
+        self.tokens.append(node.token)
+        self.visit_children(node, start=1)
+
+    def visit_operatorpostfix(self, node: Node):
+        self.visit_children(node)
+        self.tokens.append(node.token)
 
 
 class ASTBuilder(TokenVisitor):

@@ -68,25 +68,32 @@ def test_stringify():
 
 def test_ast_builder():
     ast = build_ast(tokenize("=3*4+5"))
-    assert str(ast) == "3 * 4 + 5"
+    assert ast.to_string(separator=" ") == "= 3 * 4 + 5"
+    assert stringify(ast.tokens) == "=3*4+5"
 
     ast = build_ast(tokenize("=-1"))
-    assert str(ast) == "- 1"
+    assert ast.to_string(separator=" ") == "= - 1"
+    assert stringify(ast.tokens) == "=-1"
 
     ast = build_ast(tokenize("=1%"))
-    assert str(ast) == "1 %"
+    assert ast.to_string(separator=" ") == "= 1 %"
+    assert stringify(ast.tokens) == "=1%"
 
     ast = build_ast(tokenize("=SUM(1, 2)"))
-    assert str(ast) == "SUM( 1 , 2 )"
+    assert ast.to_string(separator=" ") == "= SUM( 1 , 2 )"
+    assert stringify(ast.tokens) == "=SUM(1,2)"
 
     ast = build_ast(tokenize("=1+(2*-3)"))
-    assert str(ast) == "1 + ( 2 * - 3 )"
+    assert ast.to_string(separator=" ") == "= 1 + ( 2 * - 3 )"
+    assert stringify(ast.tokens) == "=1+(2*-3)"
 
     ast = build_ast(tokenize("={1,2,3;4,5,6}"))
-    assert str(ast) == "{ 1 , 2 , 3 ; 4 , 5 , 6 }"
+    assert ast.to_string(separator=" ") == "= { 1 , 2 , 3 ; 4 , 5 , 6 }"
+    assert stringify(ast.tokens) == "={1,2,3;4,5,6}"
 
     ast = build_ast(tokenize("={FUNC(-1, 2*3, 4%, (5 / 6))}"))
-    assert str(ast) == "{ FUNC( - 1 , 2 * 3 , 4 % , ( 5 / 6 ) ) }"
+    assert ast.to_string(separator=" ") == "= { FUNC( - 1 , 2 * 3 , 4 % , ( 5 / 6 ) ) }"
+    assert stringify(ast.tokens) == "={FUNC(-1,2*3,4%,(5/6))}"
 
 
 def test_invalid_formulas():
