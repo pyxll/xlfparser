@@ -81,6 +81,20 @@ namespace xlfparser {
         return std::strlen(str);
     }
 
+    /* thrown by tokenize for any invalid formula */
+    class invalid_formula: public std::runtime_error
+    {
+    public:
+        invalid_formula(const std::string& message): std::runtime_error(message) {};
+    };
+
+    /* thrown by Token.value if the token is out of range of the input string */
+    class invalid_token: public invalid_formula
+    {
+    public:
+        invalid_token(const std::string& message): invalid_formula(message) {};
+    };
+
     /**
      * Options to the tokenize function.
      * See also tokenize.
@@ -175,7 +189,7 @@ namespace xlfparser {
         auto value(const char_type* string, size_t size) const
         {
             if (m_end >= size || m_start > m_end)
-                throw std::out_of_range("Token index out of range");
+                throw invalid_token("Token index out of range");
 
             typedef std::basic_string<char_type, traits_type, alloc_type> string_type;
             return string_type(&string[m_start], m_end + 1 - m_start);
@@ -191,7 +205,7 @@ namespace xlfparser {
         string_type value(const string_type& string) const
         {
             if (m_end >= string.size() || m_start > m_end)
-                throw std::out_of_range("Token index out of range");
+                throw invalid_token("Token index out of range");
 
             return string.substr(m_start, m_end + 1 - m_start);
         }
@@ -383,7 +397,7 @@ namespace xlfparser {
     {
         // Basic checks to make sure it's a valid formula
         if (size < 2 || formula[0] != '=')
-            throw std::runtime_error("Invalid Excel formula.");
+            throw invalid_formula("Invalid Excel formula");
 
         // Chars used in parsing excel formual
         const char_type QUOTE_DOUBLE  = XLFP_CHAR('"');
@@ -625,6 +639,9 @@ namespace xlfparser {
                     start = index;
                 }
 
+                if (stack.empty())
+                    throw invalid_formula("Mismatched braces");
+
                 tokens.push_back(Token(start, index, stack.top(), Token::Subtype::Stop));
                 stack.pop();
 
@@ -774,6 +791,9 @@ namespace xlfparser {
                     start = index;
                 }
 
+                if (stack.empty())
+                    throw invalid_formula("Mismatched parentheses");
+
                 tokens.push_back(Token(start, index, stack.top(), Token::Subtype::Stop));
                 stack.pop();
 
@@ -808,6 +828,8 @@ namespace xlfparser {
     template <typename char_type>
     inline std::vector<Token> tokenize(const char_type *formula, size_t size)
     {
+        if (nullptr == formula)
+            throw invalid_formula("null formula pointer");
         return tokenize(formula, size, {});
     }
 

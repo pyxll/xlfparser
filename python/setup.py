@@ -60,7 +60,7 @@ directives = {
 
 setup(
     name="xlfparser",
-    version="0.0.1",
+    version="0.0.2",
     packages=["xlfparser"],
     author="Tony Roberts",
     author_email="tony@pyxll.com",
