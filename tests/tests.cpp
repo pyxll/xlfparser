@@ -436,3 +436,11 @@ TEST_CASE("Arrays with inner functions using different locale are parsed correct
     CHECK(result[15].type() == Token::Type::Array);
     CHECK(result[15].subtype() == Token::Subtype::Stop);
 }
+
+TEST_CASE("Invalid formula expressions throw an exception", "[xlfparser]")
+{
+    REQUIRE_THROWS_WITH(tokenize(std::string_view("=}")), Contains("Mismatched braces"));
+    REQUIRE_THROWS_WITH(tokenize(std::string_view("={1,2,3}}")), Contains("Mismatched braces"));
+    REQUIRE_THROWS_WITH(tokenize(std::string_view("=)")), Contains("Mismatched parentheses"));
+    REQUIRE_THROWS_WITH(tokenize(std::string_view("=foo())")), Contains("Mismatched parentheses"));
+}

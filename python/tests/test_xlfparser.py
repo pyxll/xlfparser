@@ -1,3 +1,4 @@
+import pytest
 from xlfparser import tokenize, stringify, build_ast, Token
 
 
@@ -86,3 +87,21 @@ def test_ast_builder():
 
     ast = build_ast(tokenize("={FUNC(-1, 2*3, 4%, (5 / 6))}"))
     assert str(ast) == "{ FUNC( - 1 , 2 * 3 , 4 % , ( 5 / 6 ) ) }"
+
+
+def test_invalid_formulas():
+    with pytest.raises(RuntimeError) as e:
+        tokenize("=}")
+    assert "Mismatched braces" in str(e)
+
+    with pytest.raises(RuntimeError) as e:
+        tokenize("={1,2,3}}")
+    assert "Mismatched braces" in str(e)
+
+    with pytest.raises(RuntimeError) as e:
+        tokenize("=)")
+    assert "Mismatched parentheses" in str(e)
+
+    with pytest.raises(RuntimeError) as e:
+        tokenize("=foo())")
+    assert "Mismatched parentheses" in str(e)

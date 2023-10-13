@@ -3,12 +3,14 @@
 /* BEGIN: Cython Metadata
 {
     "distutils": {
-        "depends": [],
+        "depends": [
+            "C:\\github\\tonyroberts\\xlfparser\\python\\include\\xlfparser.h"
+        ],
         "extra_compile_args": [
             "/std:c++17"
         ],
         "include_dirs": [
-            "C:\\github\\xlfparser\\python\\include"
+            "C:\\github\\tonyroberts\\xlfparser\\python\\include"
         ],
         "language": "c++",
         "name": "xlfparser._xlfparser",
