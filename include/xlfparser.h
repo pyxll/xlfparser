@@ -81,6 +81,16 @@ namespace xlfparser {
         return std::strlen(str);
     }
 
+    /* True for any character Excel treats as insignificant whitespace between tokens. */
+    template <typename char_type>
+    inline bool _is_whitespace(char_type c)
+    {
+        return c == XLFP_CHAR(' ') ||
+               c == XLFP_CHAR('\t') ||
+               c == XLFP_CHAR('\n') ||
+               c == XLFP_CHAR('\r');
+    }
+
     /* thrown by tokenize for any invalid formula */
     class invalid_formula: public std::runtime_error
     {
@@ -404,7 +414,6 @@ namespace xlfparser {
         const char_type QUOTE_SINGLE  = XLFP_CHAR('\'');
         const char_type PAREN_OPEN    = XLFP_CHAR('(');
         const char_type PAREN_CLOSE   = XLFP_CHAR(')');
-        const char_type WHITESPACE    = XLFP_CHAR(' ');
         const char_type ERROR_START   = XLFP_CHAR('#');
 
         // Some chars can be changed in the options
@@ -652,8 +661,8 @@ namespace xlfparser {
                 continue;
             }
 
-            // trim white-space
-            if (formula[index] == WHITESPACE)
+            // trim white-space (spaces, tabs and newlines)
+            if (_is_whitespace(formula[index]))
             {
                 if (index > start)
                 {
@@ -661,7 +670,7 @@ namespace xlfparser {
                     start = index;
                 }
 
-                while ((formula[index] == WHITESPACE) && (index < size))
+                while ((index < size) && _is_whitespace(formula[index]))
                     index++;
 
                 tokens.push_back(Token(start, index-1, Token::Type::Whitespace, Token::Subtype::None));

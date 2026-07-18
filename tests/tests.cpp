@@ -236,6 +236,49 @@ TEST_CASE("Implicit intersection parsed correctly", "[xlfparser]")
 }
 
 
+TEST_CASE("Newlines and tabs are treated as whitespace", "[xlfparser]")
+{
+    // Multi-line formulas (e.g. entered with Alt+Enter) should tokenize the
+    // same as their single-line equivalents. See issue #8.
+    std::string formula("=SUM(\n\t1,\n\t2\n)");
+    auto result = tokenize(formula);
+
+    REQUIRE(result.size() == 5);
+
+    CHECK_THAT(result[0].value(formula), Equals("SUM"));
+    CHECK(result[0].type() == Token::Type::Function);
+    CHECK(result[0].subtype() == Token::Subtype::Start);
+
+    CHECK_THAT(result[1].value(formula), Equals("1"));
+    CHECK(result[1].type() == Token::Type::Operand);
+
+    CHECK_THAT(result[2].value(formula), Equals(","));
+    CHECK(result[2].type() == Token::Type::Argument);
+
+    CHECK_THAT(result[3].value(formula), Equals("2"));
+    CHECK(result[3].type() == Token::Type::Operand);
+
+    CHECK(result[4].type() == Token::Type::Function);
+    CHECK(result[4].subtype() == Token::Subtype::Stop);
+}
+
+
+TEST_CASE("Newline between operands is an intersection operator", "[xlfparser]")
+{
+    // As with a space, a newline separating two ranges is an implicit
+    // intersection operator.
+    std::string formula("=A1:A10\nB1:B10");
+    auto result = tokenize(formula);
+
+    REQUIRE(result.size() == 3);
+
+    CHECK(result[0].type() == Token::Type::Operand);
+    CHECK(result[1].type() == Token::Type::OperatorInfix);
+    CHECK(result[1].subtype() == Token::Subtype::Intersection);
+    CHECK(result[2].type() == Token::Type::Operand);
+}
+
+
 TEST_CASE("Arrays are parsed correctly", "[xlfparser]")
 {
     std::string formula("={1;2}");
